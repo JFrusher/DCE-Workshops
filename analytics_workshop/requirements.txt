@@ -1,0 +1,5 @@
+numpy
+pandas
+pathlib
+plotly
+nbformat>=4.2.0
