@@ -6,6 +6,11 @@ import numpy as np
 import pandas as pd
 
 
+def _rolling_window_average(values: np.ndarray, window: int) -> np.ndarray:
+    series = pd.Series(values, dtype="float64")
+    return series.rolling(window=window, min_periods=1, center=True).mean().bfill().ffill().to_numpy()
+
+
 def generate_pump_telemetry(output_path: Path) -> pd.DataFrame:
     rng = np.random.default_rng(42)
     n_rows = 30_000
@@ -13,34 +18,46 @@ def generate_pump_telemetry(output_path: Path) -> pd.DataFrame:
     time_hours = row_index / 60.0
     timestamp = pd.Timestamp("2026-01-01 00:00:00") + pd.to_timedelta(row_index, unit="m")
 
-    wear = np.clip((time_hours - 140.0) / 260.0, 0.0, 1.0)
-    load = (
-        0.5
-        + 0.2 * np.sin(2 * np.pi * time_hours / 24.0)
-        + 0.1 * np.sin(2 * np.pi * time_hours / 8.0)
-        + 0.03 * rng.normal(size=n_rows)
+    wear = np.clip((time_hours - 120.0) / 260.0, 0.0, 1.0)
+    operating_load = (
+        0.58
+        + 0.18 * np.sin(2 * np.pi * time_hours / 24.0)
+        + 0.08 * np.sin(2 * np.pi * time_hours / 7.0 + 0.5)
+        + 0.02 * rng.normal(size=n_rows)
     )
-    load = np.clip(load, 0.1, 1.0)
+    operating_load = np.clip(operating_load, 0.15, 0.98)
 
-    true_frequency = 0.075 + 0.025 * wear + 0.003 * np.sin(2 * np.pi * time_hours / 100.0)
+    true_frequency = 0.075 + 0.022 * wear + 0.003 * np.sin(2 * np.pi * time_hours / 96.0)
     phase = np.cumsum(2 * np.pi * true_frequency)
-    clean_vibration = (0.75 + 1.6 * wear + 0.1 * load) * np.sin(phase) + 0.22 * np.sin(2 * phase)
+    vibration_envelope = 0.30 + 0.95 * wear + 0.18 * operating_load
+    clean_vibration = vibration_envelope * np.sin(phase) + 0.16 * np.sin(2 * phase)
+    clean_vibration += 0.03 * np.sin(2 * np.pi * time_hours / 11.0)
 
-    raw_vibration = clean_vibration + rng.normal(0.0, 1.0, n_rows)
-    spike_mask = rng.random(n_rows) < 0.008
-    raw_vibration[spike_mask] += rng.normal(0.0, 4.5, spike_mask.sum())
+    raw_vibration = clean_vibration + rng.normal(0.0, 1.05, n_rows)
+    spike_mask = rng.random(n_rows) < 0.01
+    raw_vibration[spike_mask] += rng.normal(0.0, 4.0, spike_mask.sum())
 
-    true_pressure = 118.0 + 0.2 * np.sin(2 * np.pi * time_hours / 180.0)
-    drifted_pressure = true_pressure - 0.05 * time_hours + rng.normal(0.0, 0.6, n_rows)
-    motor_temp = 65.0 + rng.normal(0.0, 1.0, n_rows)
-    fluid_temp = 20.0 + rng.normal(0.0, 0.12, n_rows)
+    true_pressure = 120.0 + 1.8 * np.sin(2 * np.pi * time_hours / 180.0) - 0.08 * wear * time_hours / 10.0
+    drifted_pressure = true_pressure - 0.05 * time_hours + rng.normal(0.0, 0.55, n_rows)
 
-    hidden_rms = np.sqrt(np.convolve(clean_vibration**2, np.ones(61) / 61.0, mode="same"))
-    pump_efficiency = np.clip(
-        1.0 - 1.0 * np.clip((hidden_rms - 0.5) / 1.0, 0.0, 1.0) + rng.normal(0.0, 0.005, n_rows),
-        0.0,
-        1.0,
+    motor_temp = 64.0 + 4.5 * operating_load + 2.5 * wear + 0.9 * np.sin(2 * np.pi * time_hours / 9.0)
+    motor_temp += rng.normal(0.0, 0.55, n_rows)
+    fluid_temp = 20.0 + 0.25 * np.sin(2 * np.pi * time_hours / 18.0) + rng.normal(0.0, 0.14, n_rows)
+
+    pressure_reserve = true_pressure - _rolling_window_average(true_pressure, window=91)
+    hidden_rms = np.sqrt(_rolling_window_average(clean_vibration**2, window=61))
+    hidden_trend = _rolling_window_average(clean_vibration, window=31) - clean_vibration
+
+    efficiency_raw = (
+        0.98
+        - 0.62 * np.clip((hidden_rms - 0.32) / 0.75, 0.0, 1.0)
+        - 0.26 * np.clip((-pressure_reserve - 1.8) / 4.5, 0.0, 1.0)
+        - 0.10 * np.clip((wear - 0.4) / 0.6, 0.0, 1.0)
+        - 0.04 * np.clip((motor_temp - 69.0) / 8.0, 0.0, 1.0)
+        - 0.03 * np.abs(hidden_trend)
+        + rng.normal(0.0, 0.012, n_rows)
     )
+    pump_efficiency = np.clip(efficiency_raw, 0.0, 1.0)
 
     telemetry = pd.DataFrame(
         {
