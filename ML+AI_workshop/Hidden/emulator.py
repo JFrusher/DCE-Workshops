@@ -15,7 +15,8 @@ class EmulatorConfig:
     interval_minutes: int = 1
     nominal_hours_end: float = 75.0
     ood_hours_start: float = 76.0
-    drift_rate_kpa_per_hour: float = -0.05
+    train_cutoff_hours: float = 80.0  # Chronological boundary to prevent scrambled line charts
+    drift_rate_kpa_per_hour: float = -0.065  # Amplified drift to reward pressure reserve engineering
     cavitation_threshold_kpa: float = -7.5
     output_name: str = "pump_telemetry.csv"
 
@@ -50,26 +51,30 @@ class PumpTelemetryEmulator:
         )
 
     def _build_vibration(self, time_hours: np.ndarray, nominal_mask: np.ndarray, ood_mask: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        # Healthy baseline component
         healthy = 0.07 + 0.02 * np.sin(2 * np.pi * time_hours / 19.0) + 0.01 * np.sin(2 * np.pi * time_hours / 7.0)
         healthy += self.rng.normal(0.0, 0.045, size=time_hours.size)
 
+        # High-amplitude EMF sensor bursts (creates raw feature confusion)
         emf_bursts = np.zeros_like(time_hours)
         burst_centers = self.rng.choice(np.arange(time_hours.size), size=14, replace=False)
         for center in burst_centers:
-            width = int(self.rng.integers(2, 8))
+            width = int(self.rng.integers(3, 10))
             start = max(0, center - width)
             stop = min(time_hours.size, center + width + 1)
             envelope = np.hanning(stop - start)
-            emf_bursts[start:stop] += envelope * self.rng.normal(0.5, 0.2)
+            emf_bursts[start:stop] += envelope * self.rng.normal(0.65, 0.15)
 
         raw_vibration = healthy + emf_bursts
-        raw_vibration += np.where(nominal_mask, 0.0, 0.08 * np.sin(2 * np.pi * time_hours / 3.0))
-        raw_vibration += np.where(ood_mask, 0.55 * np.sin(2 * np.pi * time_hours * 10.0), 0.0)
-        raw_vibration += np.where(ood_mask, self.rng.normal(0.0, 0.36, size=time_hours.size), 0.0)
+        # Progressive cyclic structural imbalance during transition/OOD
+        raw_vibration += np.where(nominal_mask, 0.0, 0.09 * np.sin(2 * np.pi * time_hours / 3.0))
+        # Severe mechanical vibrations during cavitation phase
+        raw_vibration += np.where(ood_mask, 0.58 * np.sin(2 * np.pi * time_hours * 10.0), 0.0)
+        raw_vibration += np.where(ood_mask, self.rng.normal(0.0, 0.38, size=time_hours.size), 0.0)
 
-        spike_probability = np.where(ood_mask, 0.02, 0.005)
+        spike_probability = np.where(ood_mask, 0.025, 0.005)
         spike_mask = self.rng.random(time_hours.size) < spike_probability
-        raw_vibration[spike_mask] += self.rng.normal(0.0, np.where(ood_mask[spike_mask], 2.2, 1.0))
+        raw_vibration[spike_mask] += self.rng.normal(0.0, np.where(ood_mask[spike_mask], 2.4, 1.0))
 
         vibration_rms = self._rolling_rms(raw_vibration, window=31)
         return raw_vibration, vibration_rms
@@ -85,23 +90,25 @@ class PumpTelemetryEmulator:
         ood_mask = time_hours >= self.config.ood_hours_start
         calibrated_pressure += np.where(ood_mask, -0.8 * np.sin(2 * np.pi * time_hours / 2.5), 0.0)
 
+        # Localized transient cavitation drops
         cavitation_dips = np.zeros_like(time_hours)
         ood_indices = np.flatnonzero(ood_mask)
-        for _ in range(15):
+        for _ in range(18):
             if ood_indices.size == 0:
                 break
             start = int(self.rng.choice(ood_indices))
-            duration = int(self.rng.integers(3, 10))
+            duration = int(self.rng.integers(4, 12))
             stop = min(time_hours.size, start + duration)
             segment = np.arange(start, stop)
             if segment.size == 0:
                 continue
             center = segment.mean()
             sigma = max(1.0, duration / 2.8)
-            amplitude = self.rng.uniform(6.5, 14.5)
+            amplitude = self.rng.uniform(7.5, 15.5)
             cavitation_dips[segment] -= amplitude * np.exp(-0.5 * ((segment - center) / sigma) ** 2)
 
         calibrated_pressure += cavitation_dips
+        # Linear degradation/sensor drift over time
         drifted_pressure = calibrated_pressure + self.config.drift_rate_kpa_per_hour * time_hours
         pressure_reserve = calibrated_pressure - self._rolling_average(calibrated_pressure, window=31)
         return drifted_pressure, calibrated_pressure, pressure_reserve
@@ -112,9 +119,9 @@ class PumpTelemetryEmulator:
 
         ood_count = int(ood_mask.sum())
         if ood_count:
-            ramp = np.linspace(76.2, 115.0, ood_count)
-            motor_temp[ood_mask] = ramp + 1.4 * np.sin(2 * np.pi * time_hours[ood_mask] / 4.0)
-            motor_temp[ood_mask] += self.rng.normal(0.0, 1.05, size=ood_count)
+            ramp = np.linspace(66.0, 118.0, ood_count)
+            motor_temp[ood_mask] = ramp + 1.6 * np.sin(2 * np.pi * time_hours[ood_mask] / 4.0)
+            motor_temp[ood_mask] += self.rng.normal(0.0, 1.15, size=ood_count)
 
         motor_temp[nominal_mask] = np.clip(motor_temp[nominal_mask], 55.0, 65.0)
         return motor_temp
@@ -128,38 +135,46 @@ class PumpTelemetryEmulator:
         vibration_rms: np.ndarray,
         pressure_reserve: np.ndarray,
         motor_temp: np.ndarray,
-        ood_mask: np.ndarray,
     ) -> np.ndarray:
-        efficiency = 0.82
-        efficiency += 0.025 * np.sin(2 * np.pi * time_hours / 14.0)
-        efficiency -= 0.12 * np.clip((vibration_rms - 0.16) / 0.42, 0.0, 1.0)
-        efficiency -= 0.10 * np.clip((motor_temp - 65.0) / 50.0, 0.0, 1.0)
-        efficiency -= 0.08 * np.clip((time_hours - self.config.ood_hours_start) / 44.0, 0.0, 1.0)
-        efficiency -= 0.36 * np.clip((-pressure_reserve - 1.5) / 6.0, 0.0, 1.0)
-        efficiency += self.rng.normal(0.0, 0.01, size=time_hours.size)
-        efficiency = np.clip(efficiency, 0.0, 1.0)
+        """
+        Calculates pump efficiency based on structural wear profiles and localized
+        pressure imbalances, forcing models to rely on trend indicators over raw thresholds.
+        """
+        # Baseline hydraulic performance
+        efficiency = 0.85 + 0.015 * np.sin(2 * np.pi * time_hours / 24.0)
+        
+        # 1. Structural Mechanical Wear (Accelerates rapidly during the final failure phase)
+        wear_start_hour = 75.0
+        wear_mask = time_hours >= wear_start_hour
+        if wear_mask.any():
+            # Exponential efficiency decay simulating internal hydraulic recalculation
+            degradation = 0.50 * ((time_hours[wear_mask] - wear_start_hour) / (self.config.duration_hours - wear_start_hour)) ** 1.5
+            efficiency[wear_mask] -= degradation
 
-        cavitation_mask = pressure_reserve < self.config.cavitation_threshold_kpa
-        efficiency[cavitation_mask] = np.minimum(efficiency[cavitation_mask], 0.20)
+        # 2. Localized Transient Cavitation Penalty
+        # Rewards high-frequency localized tracking (pressure reserve variance)
+        cavitation_mask = pressure_reserve < -4.0
+        efficiency[cavitation_mask] -= 0.12
 
-        severe_ood_mask = ood_mask & (motor_temp > 76.0)
-        efficiency[severe_ood_mask] = np.minimum(
-            efficiency[severe_ood_mask],
-            np.clip(0.62 - 0.007 * (motor_temp[severe_ood_mask] - 76.0), 0.20, 0.62),
-        )
-        return efficiency
+        # 3. Suppress raw linear correlation with motor temperature
+        # Adds dynamic thermal drag without letting it serve as a direct proxy for time
+        efficiency -= 0.05 * np.clip((motor_temp - 55.0) / 30.0, 0.0, 1.0)
 
+        # Stochastic noise layer
+        efficiency += self.rng.normal(0.0, 0.008, size=time_hours.size)
+        return np.clip(efficiency, 0.12, 0.95)
+    
     def _inject_dropouts(self, telemetry: pd.DataFrame, ood_mask: np.ndarray) -> pd.DataFrame:
         telemetry = telemetry.copy()
         sensor_columns = ["raw_vibration", "drifted_pressure", "motor_temp", "fluid_temp"]
         ood_indices = np.flatnonzero(ood_mask)
         dropout_mask = np.zeros(len(telemetry), dtype=bool)
 
-        for _ in range(20):
+        for _ in range(25):
             if ood_indices.size == 0:
                 break
             start = int(self.rng.choice(ood_indices))
-            length = int(self.rng.integers(2, 6))
+            length = int(self.rng.integers(2, 7))
             stop = min(len(telemetry), start + length)
             dropout_mask[start:stop] = True
 
@@ -177,7 +192,9 @@ class PumpTelemetryEmulator:
         drifted_pressure, calibrated_pressure, pressure_reserve = self._build_pressure(time_hours)
         motor_temp = self._build_motor_temp(time_hours, nominal_mask, ood_mask)
         fluid_temp = self._build_fluid_temp(time_hours)
-        pump_efficiency = self._build_efficiency(time_hours, vibration_rms, pressure_reserve, motor_temp, ood_mask)
+        
+        # Compute clean target values from physical features
+        pump_efficiency = self._build_efficiency(time_hours, vibration_rms, pressure_reserve, motor_temp)
 
         telemetry = pd.DataFrame(
             {
@@ -199,18 +216,16 @@ class PumpTelemetryEmulator:
             default="transition",
         )
 
+        # Inject chronological structural flag to explicitly prevent scrambled line chart ordering
+        telemetry["suggested_split"] = np.where(time_hours <= self.config.train_cutoff_hours, "train", "test")
+
+        # Inject real field dropout scenarios
         telemetry = self._inject_dropouts(telemetry, ood_mask)
-        telemetry.loc[telemetry["pressure_reserve"] < self.config.cavitation_threshold_kpa, "pump_efficiency"] = np.minimum(
-            telemetry.loc[telemetry["pressure_reserve"] < self.config.cavitation_threshold_kpa, "pump_efficiency"],
-            0.20,
-        )
-        telemetry["pump_efficiency"] = telemetry["pump_efficiency"].clip(0.0, 1.0)
         telemetry.to_csv(output_path, index=False)
 
-        print(f"Wrote {output_path}")
-        print(f"Generated {len(telemetry)} rows across {self.config.duration_hours} hours.")
-        print(f"Dropout rows: {telemetry.attrs.get('dropout_count', 0)}")
-        print(telemetry.head())
+        print(f"Successfully compiled: {output_path}")
+        print(f"Generated {len(telemetry)} discrete records across {self.config.duration_hours} hours.")
+        print(f"Total corrupted telemetry dropout frames: {telemetry.attrs.get('dropout_count', 0)}")
         return telemetry
 
 
