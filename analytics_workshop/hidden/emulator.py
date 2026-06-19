@@ -10,7 +10,7 @@ import pandas as pd
 np.random.seed(42)
 RNG = np.random.default_rng(42)
 
-OUTPUT_DIR = Path(__file__).resolve().parent
+OUTPUT_DIR = Path(__file__).resolve().parent.parent
 CLEAN_FILE = OUTPUT_DIR / 'ground_truth_clean.csv'
 MESSY_FILE = OUTPUT_DIR / 'messy_turbine_telemetry.csv'
 LEGACY_FILE = OUTPUT_DIR / 'wind_turbine_telemetry.csv'
@@ -221,9 +221,6 @@ def simulate_turbine(environment: pd.DataFrame, profile: TurbineProfile) -> pd.D
             if idx >= WT02_DEGRADATION_START:
                 operational_state[idx] = 'degrading'
                 maintenance_flag[idx] = 'bearing degradation'
-            if idx >= WT02_SEIZURE_INDEX:
-                operational_state[idx] = 'offline'
-                maintenance_flag[idx] = 'catastrophic seizure'
         elif profile.turbine_id == 'WT-03' and idx >= WT03_DRIFT_START:
             operational_state[idx] = 'drifting'
             maintenance_flag[idx] = 'early drift'
@@ -248,7 +245,7 @@ def simulate_turbine(environment: pd.DataFrame, profile: TurbineProfile) -> pd.D
             'Turbine_ID': profile.turbine_id,
             'Ambient_Temperature_C': np.round(ambient, 6),
             'Macro_Wind_Speed_mps': np.round(macro_wind, 6),
-            'Wind_Speed_mps': np.round(macro_wind, 6),
+            'Wind_Speed_mps': np.round(effective_wind, 6),
             'Wind_Gust_mps': np.round(gust, 6),
             'Local_Wake_Turbulence_mps': np.round(local_wake, 6),
             'Effective_Wind_Speed_mps': np.round(effective_wind, 6),
