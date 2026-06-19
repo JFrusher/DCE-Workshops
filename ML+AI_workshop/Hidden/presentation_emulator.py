@@ -146,8 +146,8 @@ class PumpTelemetryEmulator:
     ) -> np.ndarray:
         efficiency = 0.96 + 0.004 * np.sin(2 * np.pi * time_hours / 96.0)
 
-        late_life = np.clip((time_hours - 335.0) / 125.0, 0.0, 1.0)
-        efficiency -= 0.24 * late_life**1.6
+        late_life = np.clip((time_hours - 310.0) / 95.0, 0.0, 1.0)
+        efficiency -= 0.42 * late_life**2.0
 
         rolling_vibration = self._rolling_mean(vibration_rms, window=121)
         vibration_energy = np.clip((rolling_vibration - 0.08) / 0.08, 0.0, 1.0)
@@ -204,6 +204,15 @@ class PumpTelemetryEmulator:
             motor_temp,
         )
 
+        # Bearing seizure at hour 420 — creates a sharp step in efficiency and a vibration spike
+        # that is easy to point at during the live demo
+        seizure_h = 420.0
+        seizure_ramp = np.clip((time_hours - seizure_h) / 4.0, 0.0, 1.0)
+        pump_efficiency = np.clip(pump_efficiency - 0.20 * seizure_ramp, 0.04, 0.97)
+        raw_vibration = raw_vibration.copy()
+        spike_window = np.abs(time_hours - seizure_h) < 1.5
+        raw_vibration[spike_window] += 9.0 * np.exp(-((time_hours[spike_window] - seizure_h) / 0.6) ** 2)
+
         telemetry = pd.DataFrame(
             {
                 "timestamp": timestamp,
@@ -212,17 +221,10 @@ class PumpTelemetryEmulator:
                 "drifted_pressure": drifted_pressure,
                 "motor_temp": motor_temp,
                 "fluid_temp": fluid_temp,
-                "calibrated_pressure": calibrated_pressure,
-                "pressure_reserve": pressure_reserve,
                 "pump_efficiency": pump_efficiency,
             }
         )
 
-        telemetry["operating_phase"] = np.select(
-            [nominal_mask, ood_mask],
-            ["nominal", "failure"],
-            default="transition",
-        )
         telemetry["suggested_split"] = np.where(time_hours <= self.config.train_cutoff_hours, "train", "test")
 
         telemetry = self._inject_dropouts(telemetry, ood_mask)
