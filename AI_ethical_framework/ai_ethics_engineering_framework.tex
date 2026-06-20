@@ -1,0 +1,220 @@
+\documentclass[11pt,a4paper]{article}
+
+% --- Typography & Language ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[english]{babel}
+\usepackage{microtype} % Implements micro-typographic extensions for better spacing
+\usepackage{charter}   % Professional, highly readable serif font for engineering documents
+
+% --- Page Layout ---
+\usepackage[margin=1in, bindingoffset=0mm]{geometry}
+\usepackage{fancyhdr}  % Custom headers and footers
+\usepackage{parskip}   % Modern paragraph spacing (adds space instead of indenting)
+\usepackage{float}
+\usepackage{needspace}
+
+% --- Colors & Visual Styling ---
+\usepackage{xcolor}
+\definecolor{NavyBlue}{HTML}{1A365D}    % Primary Accent: Deep Navy
+\definecolor{SlateGrey}{HTML}{4A5568}   % Secondary Accent: Cool Grey
+\definecolor{LightCyan}{HTML}{EDF2F7}   % Light background tint for callouts
+\definecolor{BorderGrey}{HTML}{CBD5E0}  % Subtle border color
+
+% --- Tables & Lists ---
+\usepackage{booktabs}   % Publication-quality tables
+\usepackage{tabularx}   % Tables with adjustable-width columns
+\usepackage{enumitem}   % Customized lists
+\usepackage{amssymb}    % Required for checkbox symbols ($\square$)
+
+% --- Custom Environments ---
+\newenvironment{deflist}{%
+  \begin{description}[
+    font=\normalfont\bfseries\color{NavyBlue},
+    leftmargin=1.5em,
+    labelindent=0em,
+    itemsep=4pt,
+    parsep=0pt
+  ]
+}{%
+  \end{description}
+}
+
+\usepackage[skins]{tcolorbox}
+\newtcolorbox{principle}[1]{%
+  enhanced,
+  frame hidden,
+  borderline west={3pt}{0pt}{NavyBlue},
+  colback=LightCyan,
+  sharp corners,
+  left=10pt,
+  right=8pt,
+  top=7pt,
+  bottom=7pt,
+  before upper={\textbf{\color{NavyBlue}#1}\par\smallskip}%
+}
+
+% --- Section Headings Customization ---
+\usepackage{titlesec}
+\titleformat{\section}{\large\bfseries}{\thesection}{1em}{}[{\color{BorderGrey}\titlerule}]
+\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection}{1em}{}
+
+% --- Hyperlinks & Cross-Referencing ---
+\usepackage[hidelinks]{hyperref}
+
+% --- Header and Footer Setup ---
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0.4pt}
+\fancyhead[L]{\small Engineering AI Ethical Framework}
+\fancyhead[R]{\small Technical Deliverable}
+\fancyfoot[C]{\small\thepage}
+
+% =========================================================================
+% DOCUMENT METADATA
+% =========================================================================
+\title{
+    \vspace{-1.5cm}
+    \Huge\bfseries An Engineering-Centric AI Ethical Framework \\
+    %\Large\color{SlateGrey}Operationalizing Accountability, Traceability, and Boundaries in Safety-Critical Pipelines
+}
+\author{
+    \textbf{Jacob Frusher} \\
+    \small Intern, Mechanical Engineering \\
+    \small University of Southampton
+}
+\date{\small \today}
+
+% =========================================================================
+% DOCUMENT BODY
+% =========================================================================
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+\noindent %\textbf{Abstract [Target Word Count: 150--200 words]} \\
+The explosive adoption of artificial intelligence in safety-critical engineering systems reveals a key regulatory gap: current codes of conduct and ethical principles for AI fall short when applied to the case where failure of the algorithm leads to real-world risks such as physical, clinical, or infrastructural. This article proposes an ethical framework, geared towards engineers, that seeks to solve this problem in the particular setting of Data-Centric Engineering (DCE). The framework consists of five engineering principles, Verification, Traceability, Ultimate Liability, Boundary Clarity, and Stewardship, all of which are professional imperatives binding the practising engineer rather than the algorithm. In order to ensure that these principles do not remain in the realm of philosophy, they are put into practice through three phases of the engineering process: an algorithm risk gate at the onset of the project, compliance checks integrated within CI/CD pipelines, and a decoupled run-time architecture that ensures deterministically safe overrides. A pre-deployment audit checklist is provided for this purpose. The overarching idea here is that professional accountability cannot be delegated to anything other than a human.
+\end{abstract}
+
+\section{Introduction and Context}
+\label{sec:intro}
+%\textbf{[Target Word Count: 400--500 words]}
+
+\subsection{Background and Institutional Context}
+This framework represents one of the key outputs of this research project, providing a formal ethical framework for the use of AI in Data-Centric Engineering (DCE). It serves as an authoritative model for ensuring that all future computational techniques will be fundamentally responsible, transparent, and traceable. Taking into account the outstanding speed of current technological advancements, it is crucial to acknowledge that the proposed framework is designed to function as a living document, which can be iterated upon dynamically. It is critical to take preemptive measures due to the emergence of socio-technical risks associated with new types of engineering.
+
+\subsection{The Engineering Gap in AI Ethics}
+AI ethics guidelines usually do not work as well as expected when used in relation to physical systems. This problem results from the fact that traditional guidelines are too narrowly concentrated on the software-oriented structure and lack of capacity to predict future trends in development of algorithms. More importantly, there is no realization of the fact that engineering applications involve extremely high stakes because of potential dangers to people’s lives, natural environment, and essential infrastructure. It is the aim of the proposed framework to fill this vital regulatory gap.
+
+\subsection{Terminology and Definitions}
+\label{sec:terminology}
+The following terms are used with specific technical meaning throughout this document. Precise definitions are necessary to prevent the semantic ambiguity that commonly undermines the practical application of ethical frameworks in engineering contexts.
+
+\begin{deflist}
+
+\item[Artificial Intelligence (AI).] As used in this framework, AI denotes any computational system that employs a statistical model, trained on empirical data, to perform prediction, classification, optimisation, or decision-support tasks. This definition explicitly excludes deterministic, rule-based algorithms, which carry conventional engineering liability without the additional epistemic risks addressed here.
+
+\item[Data-Centric Engineering (DCE).] An engineering paradigm in which the data pipeline, its provenance, representativeness, and integrity, is treated as the primary engineering artefact, rather than the model architecture itself. DCE recognises that the performance and safety envelope of any AI system is fundamentally bounded by the quality and scope of its training data.
+
+\item[Algorithmic Pipeline.] The end-to-end sequence of computational processes through which raw input data is transformed into a model output or engineering recommendation. This encompasses data ingestion, pre-processing, model inference, post-processing, and any downstream actuation or advisory stages.
+
+\item[Out-of-Distribution (OOD) Data.] Input data whose statistical characteristics fall outside the distribution represented by the model’s training dataset. OOD inputs invalidate the implicit assumptions of a trained model and constitute a primary and frequently underestimated failure mode in deployed AI systems.
+
+\item[Human-in-the-Loop (HITL).] A system architecture or operational protocol in which a qualified engineer is required to review, validate, or explicitly approve algorithmic outputs before consequential action is taken. HITL mechanisms are the primary instrument through which nondelegable professional liability is preserved at runtime.
+
+\item[Continuous Integration / Continuous Deployment (CI/CD).] A software engineering practice in which code changes are automatically compiled, tested, and validated against a defined suite of checks prior to integration or deployment. Within this framework, the CI/CD pipeline serves as the enforcement mechanism for automated ethical and physical boundary compliance checks.
+
+\item[Failure Mode and Effects Analysis (FMEA).] A structured, systematic methodology for enumerating the potential failure modes of a system, assessing their root causes and downstream consequences, and quantifying associated risk. This framework extends the conventional FMEA to encompass probabilistic and adversarial failure modes specific to AI systems, referred to herein as a \textit{model-focused FMEA}.
+
+\end{deflist}
+
+\needspace{25\baselineskip}
+\begin{samepage}
+\section{The Five Core Engineering Principles}
+\label{sec:principles}
+
+\subsection*{Principle I - Verification}
+You shall not accept any algorithmic predictions or outputs as being verified truths. All data models, sensitivities, optimisations, and simulations must be constrained within known engineering, statistical, and physical limits, and rigorously validated against empirical reality before use.
+
+
+\subsection*{Principle II - Traceability}
+Provenance of training datasets and generated data must be evident to ensure the pipeline is fully reproducible and auditable. Misrepresenting the source of data, concealing algorithmic bias, or promoting unverified AI-generated content as your own engineering design is unethical.
+
+
+\subsection*{Principle III - Ultimate Liability}
+The algorithm does not possess professional liability; only the engineer does. You have ultimate, nondelegable liability for the physical and clinical failure modes of any system powered by an AI pipeline if you certify it.
+
+\subsection*{Principle IV - Boundary Clarity}
+It is your responsibility to make explicit where the training distribution ends and where extrapolation begins. You must foster an environment in which model anomalies, distributional drift, and OOD conditions are systematically detected and disclosed.
+
+\subsection*{Principle V - Stewardship}
+In fields where technology is advancing rapidly, you must anticipate future failure modes, adversarial vulnerabilities, and the potential for misuse or dual-use of your systems. Where there exists a credible risk of serious harm to human beings or the natural environment, the precautionary principle shall govern.
+
+\end{samepage}
+
+
+\section{Operationalizing the Framework}
+\label{sec:operationalizing}
+
+To avoid the danger of keeping this framework purely philosophical in nature, it is imperative that these imperatives be operationalized into concrete engineering processes. This would involve a two-pronged approach consisting of incorporating verification checkpoints into the technical system and developing a culture that encourages accountability.
+
+\subsection{Integration into the Engineering Lifecycle}
+This framework instantiates a multi-layered governance model that fundamentally departs from conventional, retrospective auditing paradigms. Rather than serving as a post-hoc diagnostic tool, ethical compliance is operationalized as an active, continuous gating mechanism embedded throughout the entire engineering lifecycle across three sequential phases.
+
+\paragraph{Project Inception.} 
+Operational controls occur even before the architecture design. Each data-oriented project needs to first pass through an established project inception gate where a strict algorithmic risk analysis will be conducted. The reason for doing so at the pre-development stage is that this stage clearly defines the operational scope of the system and maps out failure modes.
+
+\paragraph{Continuous Automated CI/CD Integration.} 
+In the process of development, however, these ethical requirements translate to automated checking mechanisms that are intrinsically part of the CI/CD process. In addition to the regular deterministic unit tests, automated test processes conduct continuous adversarial testing, data lineage verification, and mathematical boundary checks. If a new version of a model breaches the physical boundary laws set forth or shows statistical drift from its base distribution, then it will not compile and will not be deployed.
+
+\paragraph{Decoupled System Architecture.} 
+The deployment phase sees the presence of a structurally decoupled architecture for runtime execution of the critical activities. In this architecture, the predictive AI pipeline runs purely as an advisory system, being subservient to the deterministic, non-probabilistic physical safety loop always. When out-of-distribution (OOD) data inputs or anomalies in optimization process occur, the system initiates the immediate cut-off function. This is because of the structural design feature that causes an instant fallback of the physical asset into a predetermined deterministically safe mode along with the activation of HITL override requiring engineering approval before resumption of autonomy.
+
+\subsection{Academic Culture and Research Training}
+Despite these measures, technical countermeasures will always be insufficient without a complete cultural change in institutional infrastructure that will encourage the development of \textit{algorithmic skepticism}. The entire university coursework and training protocols should condition researchers to see machine-learning outputs not as immutable facts, but as extremely complex conditional probability distributions that need to be validated.
+
+%TODO continue the above
+
+
+\needspace{20\baselineskip}
+\begin{samepage}
+\section{Engineering Pre-Deployment Audit Checklist}
+\label{sec:checklist}
+
+This section offers a template for a checklist that helps transition from the theoretical framework shown in Section~\ref{sec:principles} to a practical operational gatekeeper.
+
+\begin{table}[H]
+\centering
+\caption{Operational AI Pipeline Pre-Deployment Audit}
+\label{tab:audit_checklist}
+\vspace{2mm}
+\begin{tabularx}{\textwidth}{l X c r}
+\toprule
+\textbf{ID} & \textbf{Audit Requirement / Verification Prompt} & \textbf{Status} & \textbf{Sign-off (Init.)} \\
+\midrule
+\multicolumn{4}{l}{\textbf{Principle 1}} \\
+1.1 & Are model outputs checked by automated deterministic bounding laws? & $\square$ Y / $\square$ N & \dots\dots\dots \\
+1.2 & Has empirical testing verified that optimization steps remain physically viable? & $\square$ Y / $\square$ N & \dots\dots\dots \\
+\midrule
+\multicolumn{4}{l}{\textbf{Principle 2}} \\
+2.1 & Is the training dataset traceable to its original raw sensor/clinical source? & $\square$ Y / $\square$ N & \dots\dots\dots \\
+2.2 & Are all synthetic data generations clearly documented and segregated? & $\square$ Y / $\square$ N & \dots\dots\dots \\
+\midrule
+\multicolumn{4}{l}{\textbf{Principle 4}} \\
+3.1 & Is the explicit mathematical boundary of the training distribution documented? & $\square$ Y / $\square$ N & \dots\dots\dots \\
+3.2 & Does the system feature an automated hard cutoff/warning for OOD data? & $\square$ Y / $\square$ N & \dots\dots\dots \\
+\midrule
+\multicolumn{4}{l}{\textbf{Principle 5}} \\
+4.1 & Has an adversarial stress test or model-focused FMEA been conducted? & $\square$ Y / $\square$ N & \dots\dots\dots \\
+4.2 & Is there an explicit rollback plan if live system drift is detected? & $\square$ Y / $\square$ N & \dots\dots\dots \\
+\bottomrule
+\end{tabularx}
+\end{table}
+\end{samepage}
+\section{Conclusion}
+\label{sec:conclusion}
+% Reiterate that accountability cannot be outsourced to code. By enforcing strict bounding constraints, explicit data provenance, clear boundary controls, and unyielding human professional liability, the organization can safely deploy cutting-edge AI pipelines without compromising its fundamental dedication to public safety and physical engineering excellence.
+Accountability cannot be outsourced, while coding tools allow us the automation of most tasks, they cannot replace the human responsibility of ensuring a system is safe and reliable. It is the duty of an engineer to enforce strict bounday constraints, explicit data provenance, clear boundary controls, and unyielding human professional liability. By doing so, this encourages the safe and effective usage of AI without comprimising the fundamental dedication to public safety and physical engineering excellence.
+\end{document}
