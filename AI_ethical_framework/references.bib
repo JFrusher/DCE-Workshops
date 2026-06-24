@@ -1,62 +1,119 @@
-@book{ieee_ethically_aligned,
-  author    = {{IEEE Global Initiative on Ethics of Autonomous and Intelligent Systems}},
-  title     = {Ethically Aligned Design: A Vision for Prioritizing Human Well-being with Autonomous and Intelligent Systems},
-  edition   = {1},
-  publisher = {IEEE},
-  address   = {Piscataway, NJ},
-  year      = {2019},
-  url       = {https://ethicsinaction.ieee.org/},
-  urldate   = {2026-06-22}
+% ============================================================
+%  References --- An AI Ethical Framework for Data-Centric
+%  Engineering (UOS-MECH-DCE-2026-01)
+%  Maintained by: J. Frusher <jf7g23@soton.ac.uk>
+%  Last revised:  June 2026
+% ============================================================
+
+% ----- AI Safety and Technical Research -----
+
+@misc{amodei2016,
+  author      = {Amodei, Dario and Olah, Chris and Steinhardt, Jacob
+                 and Christiano, Paul and Schulman, John and Man{\'e}, Dan},
+  title       = {Concrete Problems in {AI} Safety},
+  year        = {2016},
+  eprint      = {1606.06565},
+  eprinttype  = {arXiv},
+  eprintclass = {cs.AI}
 }
 
-@techreport{iso42001,
-  author      = {{ISO/IEC}},
-  title       = {Information Technology --- Artificial Intelligence --- Management System},
-  institution = {International Organization for Standardization},
-  address     = {Geneva, Switzerland},
-  type        = {International Standard},
-  number      = {ISO/IEC 42001:2023},
-  year        = {2023}
+@inproceedings{gal2016,
+  author      = {Gal, Yarin and Ghahramani, Zoubin},
+  title       = {Dropout as a {Bayesian} Approximation: Representing
+                 Model Uncertainty in Deep Learning},
+  booktitle   = {Proceedings of the 33rd International Conference on
+                 Machine Learning ({ICML})},
+  series      = {Proceedings of Machine Learning Research},
+  volume      = {48},
+  pages       = {1050--1059},
+  publisher   = {PMLR},
+  year        = {2016}
 }
 
-@techreport{iec61508,
-  author      = {{IEC}},
-  title       = {Functional Safety of Electrical/Electronic/Programmable Electronic Safety-Related Systems},
-  institution = {International Electrotechnical Commission},
-  address     = {Geneva, Switzerland},
-  type        = {International Standard},
-  number      = {IEC 61508:2010},
-  year        = {2010}
+@inproceedings{hendrycks2017,
+  author      = {Hendrycks, Dan and Gimpel, Kevin},
+  title       = {A Baseline for Detecting Misclassified and
+                 Out-of-Distribution Examples in Neural Networks},
+  booktitle   = {Proceedings of the 5th International Conference on
+                 Learning Representations ({ICLR})},
+  year        = {2017},
+  url         = {https://arxiv.org/abs/1610.02136},
+  urldate     = {2026-06-22}
 }
 
-@techreport{iso13849,
-  author      = {{ISO}},
-  title       = {Safety of Machinery --- Safety-Related Parts of Control Systems --- Part 1: General Principles for Design},
-  institution = {International Organization for Standardization},
-  address     = {Geneva, Switzerland},
-  type        = {International Standard},
-  number      = {ISO 13849-1:2015},
+@article{mehrabi2021,
+  author      = {Mehrabi, Ninareh and Morstatter, Fred and Saxena, Nripsuta
+                 and Lerman, Kristina and Galstyan, Aram},
+  title       = {A Survey on Bias and Fairness in Machine Learning},
+  journal     = {{ACM} Computing Surveys},
+  volume      = {54},
+  number      = {6},
+  pages       = {115:1--115:35},
+  year        = {2021},
+  doi         = {10.1145/3457607}
+}
+
+@inproceedings{sculley2015,
+  author      = {Sculley, D. and Holt, Gary and Golovin, Daniel
+                 and Davydov, Eugene and Phillips, Todd and Ebner, Dietmar
+                 and Chaudhary, Vinay and Young, Michael
+                 and Crespo, Jean-Fran\c{c}ois and Dennison, Dan},
+  title       = {Hidden Technical Debt in Machine Learning Systems},
+  booktitle   = {Advances in Neural Information Processing Systems},
+  volume      = {28},
+  publisher   = {Curran Associates, Inc.},
   year        = {2015}
 }
 
-@online{asme_ethics,
-  author  = {{American Society of Mechanical Engineers}},
-  title   = {Code of Ethics of Engineers},
-  year    = {2012},
-  url     = {https://www.asme.org/about-asme/governance/ethics},
-  urldate = {2026-06-22}
+% ----- Books and Monographs -----
+
+@book{boehm1981,
+  author      = {Boehm, Barry W.},
+  title       = {Software Engineering Economics},
+  publisher   = {Prentice-Hall},
+  address     = {Englewood Cliffs, NJ},
+  year        = {1981}
 }
 
-@online{asce_ethics,
-  author  = {{American Society of Civil Engineers}},
-  title   = {Code of Ethics},
-  year    = {2020},
-  url     = {https://www.asce.org/career-growth/ethics/code-of-ethics},
-  urldate = {2026-06-22}
+@book{humble2010,
+  author      = {Humble, Jez and Farley, David},
+  title       = {Continuous Delivery: Reliable Software Releases through
+                 Build, Test, and Deployment Automation},
+  publisher   = {Addison-Wesley Professional},
+  address     = {Upper Saddle River, NJ},
+  year        = {2010}
 }
+
+@book{leveson2012,
+  author      = {Leveson, Nancy G.},
+  title       = {Engineering a Safer World: Systems Thinking Applied
+                 to Safety},
+  publisher   = {MIT Press},
+  address     = {Cambridge, MA},
+  year        = {2012}
+}
+
+@book{quinonero2009,
+  editor      = {Qui{\~n}onero-Candela, Joaquin and Sugiyama, Masashi
+                 and Schwaighofer, Anton and Lawrence, Neil D.},
+  title       = {Dataset Shift in Machine Learning},
+  publisher   = {MIT Press},
+  address     = {Cambridge, MA},
+  year        = {2009}
+}
+
+@book{shneiderman2022,
+  author      = {Shneiderman, Ben},
+  title       = {Human-Centered {AI}},
+  publisher   = {Oxford University Press},
+  address     = {Oxford, UK},
+  year        = {2022}
+}
+
+% ----- International Standards -----
 
 @techreport{iec60812,
-  author      = {{IEC}},
+  author      = {{International Electrotechnical Commission}},
   title       = {Failure Modes and Effects Analysis ({FMEA} and {FMECA})},
   institution = {International Electrotechnical Commission},
   address     = {Geneva, Switzerland},
@@ -65,10 +122,113 @@
   year        = {2018}
 }
 
-@inproceedings{hendrycks2017,
-  author    = {Hendrycks, Dan and Gimpel, Kevin},
-  title     = {A Baseline for Detecting Misclassified and Out-of-Distribution Examples in Neural Networks},
-  booktitle = {Proceedings of the International Conference on Learning Representations ({ICLR})},
-  year      = {2017},
-  url       = {https://arxiv.org/abs/1610.02136}
+@techreport{iec61508,
+  author      = {{International Electrotechnical Commission}},
+  title       = {Functional Safety of Electrical/Electronic/Programmable
+                 Electronic Safety-Related Systems},
+  institution = {International Electrotechnical Commission},
+  address     = {Geneva, Switzerland},
+  type        = {International Standard},
+  number      = {IEC 61508:2010},
+  year        = {2010}
+}
+
+@techreport{iso13849,
+  author      = {{International Organization for Standardization}},
+  title       = {Safety of Machinery --- Safety-Related Parts of Control
+                 Systems --- Part~1: General Principles for Design},
+  institution = {International Organization for Standardization},
+  address     = {Geneva, Switzerland},
+  type        = {International Standard},
+  number      = {ISO 13849-1:2015},
+  year        = {2015}
+}
+
+@techreport{iso22989,
+  author      = {{ISO/IEC}},
+  title       = {Information Technology --- Artificial Intelligence ---
+                 Artificial Intelligence Concepts and Terminology},
+  institution = {International Organization for Standardization /
+                 International Electrotechnical Commission},
+  address     = {Geneva, Switzerland},
+  type        = {International Standard},
+  number      = {ISO/IEC 22989:2022},
+  year        = {2022}
+}
+
+@techreport{iso42001,
+  author      = {{ISO/IEC}},
+  title       = {Information Technology --- Artificial Intelligence ---
+                 Management System},
+  institution = {International Organization for Standardization /
+                 International Electrotechnical Commission},
+  address     = {Geneva, Switzerland},
+  type        = {International Standard},
+  number      = {ISO/IEC 42001:2023},
+  year        = {2023}
+}
+
+% ----- Professional Codes and Governance Frameworks -----
+
+@online{asce_ethics,
+  author      = {{American Society of Civil Engineers}},
+  title       = {Code of Ethics},
+  year        = {2020},
+  url         = {https://www.asce.org/career-growth/ethics/code-of-ethics},
+  urldate     = {2026-06-22}
+}
+
+@online{asme_ethics,
+  author      = {{American Society of Mechanical Engineers}},
+  title       = {Code of Ethics of Engineers},
+  year        = {2012},
+  url         = {https://www.asme.org/about-asme/governance/ethics},
+  urldate     = {2026-06-22}
+}
+
+@misc{eu_ai_act2024,
+  author      = {{European Parliament} and {Council of the European Union}},
+  title       = {Regulation ({EU}) 2024/1689 of the European Parliament
+                 and of the Council of 13 June 2024 Laying Down Harmonised
+                 Rules on Artificial Intelligence
+                 ({Artificial Intelligence Act})},
+  howpublished = {Official Journal of the European Union, L~2024/1689},
+  year        = {2024},
+  url         = {https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32024R1689},
+  urldate     = {2026-06-22}
+}
+
+@techreport{eu_hleg2019,
+  author      = {{High-Level Expert Group on Artificial Intelligence}},
+  title       = {Ethics Guidelines for Trustworthy {AI}},
+  institution = {European Commission},
+  address     = {Brussels, Belgium},
+  year        = {2019},
+  url         = {https://digital-strategy.ec.europa.eu/en/library/ethics-guidelines-trustworthy-ai},
+  urldate     = {2026-06-22}
+}
+
+@book{ieee_ethically_aligned,
+  author      = {{IEEE Global Initiative on Ethics of Autonomous
+                 and Intelligent Systems}},
+  title       = {Ethically Aligned Design: A Vision for Prioritizing
+                 Human Well-being with Autonomous and Intelligent Systems},
+  edition     = {1st},
+  publisher   = {IEEE},
+  address     = {Piscataway, NJ},
+  year        = {2019},
+  url         = {https://ethicsinaction.ieee.org/},
+  urldate     = {2026-06-22}
+}
+
+@techreport{nist_ai_rmf,
+  author      = {{National Institute of Standards and Technology}},
+  title       = {Artificial Intelligence Risk Management Framework
+                 ({AI RMF} 1.0)},
+  institution = {National Institute of Standards and Technology},
+  address     = {Gaithersburg, MD},
+  type        = {NIST AI Report},
+  number      = {NIST AI 100-1},
+  year        = {2023},
+  doi         = {10.6028/NIST.AI.100-1}
 }
