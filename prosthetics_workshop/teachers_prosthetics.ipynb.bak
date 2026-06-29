@@ -1,0 +1,3230 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "id": "t-title",
+   "metadata": {},
+   "source": [
+    "# Teacher's Notebook — Prosthetics Data Engineering Workshop"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "t-setup-intro",
+   "metadata": {},
+   "source": [
+    "---\n",
+    "## Step 0 — Setup\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "id": "t-setup-imports",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from pathlib import Path\n",
+    "import re\n",
+    "import hashlib\n",
+    "import pandas as pd"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "id": "t-setup-load",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "application/vnd.microsoft.datawrangler.viewer.v0+json": {
+       "columns": [
+        {
+         "name": "index",
+         "rawType": "int64",
+         "type": "integer"
+        },
+        {
+         "name": "Patient_ID",
+         "rawType": "str",
+         "type": "string"
+        },
+        {
+         "name": "Full_Name",
+         "rawType": "str",
+         "type": "string"
+        },
+        {
+         "name": "Age_Input",
+         "rawType": "str",
+         "type": "string"
+        },
+        {
+         "name": "Implant_Date",
+         "rawType": "str",
+         "type": "string"
+        },
+        {
+         "name": "Amputation_Cause",
+         "rawType": "str",
+         "type": "string"
+        },
+        {
+         "name": "Device_Model_ID",
+         "rawType": "str",
+         "type": "string"
+        },
+        {
+         "name": "Amputation_Pos",
+         "rawType": "str",
+         "type": "string"
+        },
+        {
+         "name": "Clinical_Notes",
+         "rawType": "str",
+         "type": "string"
+        }
+       ],
+       "ref": "3a6c682c-cb24-4ab8-b3c4-546a346535f2",
+       "rows": [
+        [
+         "0",
+         "PT-001",
+         "John Doe",
+         "28",
+         "12/05/2024",
+         "Trauma",
+         "M302",
+         "AK",
+         "Patient was referred from the northern field clinic after a road traffic accident. The residual limb is healing well, but gait training is still required before discharge."
+        ],
+        [
+         "1",
+         "PT-002",
+         "Amara Okafor",
+         "34",
+         "2024-06-15",
+         "diabetes",
+         "M404",
+         "BK",
+         "Patient arrived with a family member and requested follow-up support for socket comfort. Notes mention intermittent swelling and a need for diabetic foot education."
+        ],
+        [
+         "2",
+         "PT-003",
+         "Miguel Santos",
+         "1995",
+         "May 12th 2024",
+         "TRAUMA",
+         "M302",
+         "TT",
+         "The patient reported good progress after prosthetic fitting but needs a revised home exercise plan. Clinic staff noted that remote monitoring will help confirm long-term device comfort."
+        ],
+        [
+         "3",
+         "PT-004",
+         "Priya Nair",
+         "Don't know, maybe 40",
+         "07/11/2023",
+         "blast injury",
+         "M505",
+         "T-T",
+         "This patient was seen during a mobile outreach visit after a conflict-related injury. The prosthetic review highlighted mild pressure marks and a need for adjustment."
+        ],
+        [
+         "4",
+         "PT-005",
+         "Fatima Hassan",
+         "1988",
+         "2023/09/01",
+         "Trauma",
+         "M404",
+         "B-K",
+         "The fitting session was completed successfully, and the patient was trained on cleaning routines. A review appointment was scheduled to monitor skin irritation and prosthesis alignment."
+        ]
+       ],
+       "shape": {
+        "columns": 8,
+        "rows": 5
+       }
+      },
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>Patient_ID</th>\n",
+       "      <th>Full_Name</th>\n",
+       "      <th>Age_Input</th>\n",
+       "      <th>Implant_Date</th>\n",
+       "      <th>Amputation_Cause</th>\n",
+       "      <th>Device_Model_ID</th>\n",
+       "      <th>Amputation_Pos</th>\n",
+       "      <th>Clinical_Notes</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>0</th>\n",
+       "      <td>PT-001</td>\n",
+       "      <td>John Doe</td>\n",
+       "      <td>28</td>\n",
+       "      <td>12/05/2024</td>\n",
+       "      <td>Trauma</td>\n",
+       "      <td>M302</td>\n",
+       "      <td>AK</td>\n",
+       "      <td>Patient was referred from the northern field c...</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>1</th>\n",
+       "      <td>PT-002</td>\n",
+       "      <td>Amara Okafor</td>\n",
+       "      <td>34</td>\n",
+       "      <td>2024-06-15</td>\n",
+       "      <td>diabetes</td>\n",
+       "      <td>M404</td>\n",
+       "      <td>BK</td>\n",
+       "      <td>Patient arrived with a family member and reque...</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2</th>\n",
+       "      <td>PT-003</td>\n",
+       "      <td>Miguel Santos</td>\n",
+       "      <td>1995</td>\n",
+       "      <td>May 12th 2024</td>\n",
+       "      <td>TRAUMA</td>\n",
+       "      <td>M302</td>\n",
+       "      <td>TT</td>\n",
+       "      <td>The patient reported good progress after prost...</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>3</th>\n",
+       "      <td>PT-004</td>\n",
+       "      <td>Priya Nair</td>\n",
+       "      <td>Don't know, maybe 40</td>\n",
+       "      <td>07/11/2023</td>\n",
+       "      <td>blast injury</td>\n",
+       "      <td>M505</td>\n",
+       "      <td>T-T</td>\n",
+       "      <td>This patient was seen during a mobile outreach...</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>4</th>\n",
+       "      <td>PT-005</td>\n",
+       "      <td>Fatima Hassan</td>\n",
+       "      <td>1988</td>\n",
+       "      <td>2023/09/01</td>\n",
+       "      <td>Trauma</td>\n",
+       "      <td>M404</td>\n",
+       "      <td>B-K</td>\n",
+       "      <td>The fitting session was completed successfully...</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "  Patient_ID      Full_Name             Age_Input   Implant_Date  \\\n",
+       "0     PT-001       John Doe                    28     12/05/2024   \n",
+       "1     PT-002   Amara Okafor                    34     2024-06-15   \n",
+       "2     PT-003  Miguel Santos                  1995  May 12th 2024   \n",
+       "3     PT-004     Priya Nair  Don't know, maybe 40     07/11/2023   \n",
+       "4     PT-005  Fatima Hassan                  1988     2023/09/01   \n",
+       "\n",
+       "  Amputation_Cause Device_Model_ID Amputation_Pos  \\\n",
+       "0           Trauma            M302             AK   \n",
+       "1         diabetes            M404             BK   \n",
+       "2           TRAUMA            M302             TT   \n",
+       "3     blast injury            M505            T-T   \n",
+       "4           Trauma            M404            B-K   \n",
+       "\n",
+       "                                      Clinical_Notes  \n",
+       "0  Patient was referred from the northern field c...  \n",
+       "1  Patient arrived with a family member and reque...  \n",
+       "2  The patient reported good progress after prost...  \n",
+       "3  This patient was seen during a mobile outreach...  \n",
+       "4  The fitting session was completed successfully...  "
+      ]
+     },
+     "execution_count": 2,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "# Find the CSV regardless of which folder this notebook is opened from\n",
+    "csv_candidates = [\n",
+    "    Path('prosthetics_data.csv'),\n",
+    "    Path('..') / 'prosthetics_data.csv',\n",
+    "]\n",
+    "for candidate in csv_candidates:\n",
+    "    if candidate.exists():\n",
+    "        csv_path = candidate\n",
+    "        break\n",
+    "else:\n",
+    "    raise FileNotFoundError('Could not find prosthetics_data.csv in this folder or the parent.')\n",
+    "\n",
+    "df = pd.read_csv(csv_path)\n",
+    "df.head()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "t-setup-inspect-intro",
+   "metadata": {},
+   "source": [
+    "Three calls before any cleaning:\n",
+    "- `df.info()` — column names, dtypes, non-null counts. Messy types show up immediately (object where you'd expect int or datetime).\n",
+    "- `df.isna().sum()` — two columns have NaN: `Full_Name` (PT-007) and `Age_Input` (PT-010).\n",
+    "- `df.head()` — enough rows to see the format variety without overwhelming the screen.\n",
+    "\n",
+    "Flags to point out:\n",
+    "- `Age_Input` is dtype `object` despite mostly looking numeric — red flag.\n",
+    "- `Implant_Date` also `object` — free-text dates, six or seven formats incoming.\n",
+    "- `Amputation_Pos` column (position codes: AK, BK, TT, etc.) "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "id": "t-setup-inspect",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "<class 'pandas.DataFrame'>\n",
+      "RangeIndex: 15 entries, 0 to 14\n",
+      "Data columns (total 8 columns):\n",
+      " #   Column            Non-Null Count  Dtype\n",
+      "---  ------            --------------  -----\n",
+      " 0   Patient_ID        15 non-null     str  \n",
+      " 1   Full_Name         14 non-null     str  \n",
+      " 2   Age_Input         14 non-null     str  \n",
+      " 3   Implant_Date      15 non-null     str  \n",
+      " 4   Amputation_Cause  15 non-null     str  \n",
+      " 5   Device_Model_ID   15 non-null     str  \n",
+      " 6   Amputation_Pos    15 non-null     str  \n",
+      " 7   Clinical_Notes    15 non-null     str  \n",
+      "dtypes: str(8)\n",
+      "memory usage: 1.1 KB\n",
+      "\n",
+      "Missing values per column:\n",
+      "Patient_ID          0\n",
+      "Full_Name           1\n",
+      "Age_Input           1\n",
+      "Implant_Date        0\n",
+      "Amputation_Cause    0\n",
+      "Device_Model_ID     0\n",
+      "Amputation_Pos      0\n",
+      "Clinical_Notes      0\n",
+      "dtype: int64\n"
+     ]
+    }
+   ],
+   "source": [
+    "df.info()\n",
+    "print('\\nMissing values per column:')\n",
+    "print(df.isna().sum())"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "t-s1-etl-header",
+   "metadata": {},
+   "source": [
+    "---\n",
+    "## Section 1 — Ingestion & Pipelines (ETL vs ELT)\n",
+    "\n",
+    "Frame why pipeline design matters in healthcare before touching any data.\n",
+    "\n",
+    "**ETL (Extract, Transform, Load):**\n",
+    "- Validate and mask PII *before* it reaches the destination.\n",
+    "- Right choice when the destination is a shared cloud system and raw records must never land there.\n",
+    "- Trade-off: you need to know your transformations upfront.\n",
+    "\n",
+    "**ELT (Extract, Load, Transform):**\n",
+    "- Raw data lands first; transform inside the warehouse later.\n",
+    "- Right choice when data is large and storage is cheap.\n",
+    "- Risk in healthcare: raw patient records sit in the warehouse until the transform runs.\n",
+    "\n",
+    "Ask the room: should this charity ETL or ELT when sending records to a cloud analytics platform? Listening for: ETL, because names and PII should be masked *before* hitting the cloud. That's the path this workshop follows."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "t-s2-cleaning-header",
+   "metadata": {},
+   "source": [
+    "---\n",
+    "## Section 2 — Data Cleaning\n",
+    "\n",
+    "Three cleaning problems, one function each (keeps each piece independently testable):\n",
+    "1. `Age_Input` — integers, birth years, and freeform text all in one column\n",
+    "2. `Implant_Date` — six or seven different date formats including named months with ordinal suffixes\n",
+    "3. `Amputation_Cause` — inconsistent casing and trailing spaces"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "t-age-explain",
+   "metadata": {},
+   "source": [
+    "### 2a — Parse `Age_Input`\n",
+    "\n",
+    "Show the raw column first."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "id": "t-age-show-raw",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "application/vnd.microsoft.datawrangler.viewer.v0+json": {
+       "columns": [
+        {
+         "name": "index",
+         "rawType": "int64",
+         "type": "integer"
+        },
+        {
+         "name": "Patient_ID",
+         "rawType": "str",
+         "type": "string"
+        },
+        {
+         "name": "Age_Input",
+         "rawType": "str",
+         "type": "string"
+        }
+       ],
+       "ref": "4b982ba3-b3a8-41ad-9696-72badb05faf9",
+       "rows": [
+        [
+         "0",
+         "PT-001",
+         "28"
+        ],
+        [
+         "1",
+         "PT-002",
+         "34"
+        ],
+        [
+         "2",
+         "PT-003",
+         "1995"
+        ],
+        [
+         "3",
+         "PT-004",
+         "Don't know, maybe 40"
+        ],
+        [
+         "4",
+         "PT-005",
+         "1988"
+        ],
+        [
+         "5",
+         "PT-006",
+         "around 50"
+        ],
+        [
+         "6",
+         "PT-007",
+         "19"
+        ],
+        [
+         "7",
+         "PT-008",
+         "41"
+        ],
+        [
+         "8",
+         "PT-009",
+         "52"
+        ],
+        [
+         "9",
+         "PT-010",
+         null
+        ],
+        [
+         "10",
+         "PT-011",
+         "45"
+        ],
+        [
+         "11",
+         "PT-012",
+         "approx 36"
+        ],
+        [
+         "12",
+         "PT-013",
+         "2001"
+        ],
+        [
+         "13",
+         "PT-014",
+         "30"
+        ],
+        [
+         "14",
+         "PT-015",
+         "maybe 27"
+        ]
+       ],
+       "shape": {
+        "columns": 2,
+        "rows": 15
+       }
+      },
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>Patient_ID</th>\n",
+       "      <th>Age_Input</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>0</th>\n",
+       "      <td>PT-001</td>\n",
+       "      <td>28</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>1</th>\n",
+       "      <td>PT-002</td>\n",
+       "      <td>34</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2</th>\n",
+       "      <td>PT-003</td>\n",
+       "      <td>1995</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>3</th>\n",
+       "      <td>PT-004</td>\n",
+       "      <td>Don't know, maybe 40</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>4</th>\n",
+       "      <td>PT-005</td>\n",
+       "      <td>1988</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>5</th>\n",
+       "      <td>PT-006</td>\n",
+       "      <td>around 50</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>6</th>\n",
+       "      <td>PT-007</td>\n",
+       "      <td>19</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>7</th>\n",
+       "      <td>PT-008</td>\n",
+       "      <td>41</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>8</th>\n",
+       "      <td>PT-009</td>\n",
+       "      <td>52</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>9</th>\n",
+       "      <td>PT-010</td>\n",
+       "      <td>NaN</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>10</th>\n",
+       "      <td>PT-011</td>\n",
+       "      <td>45</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>11</th>\n",
+       "      <td>PT-012</td>\n",
+       "      <td>approx 36</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>12</th>\n",
+       "      <td>PT-013</td>\n",
+       "      <td>2001</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>13</th>\n",
+       "      <td>PT-014</td>\n",
+       "      <td>30</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>14</th>\n",
+       "      <td>PT-015</td>\n",
+       "      <td>maybe 27</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "   Patient_ID             Age_Input\n",
+       "0      PT-001                    28\n",
+       "1      PT-002                    34\n",
+       "2      PT-003                  1995\n",
+       "3      PT-004  Don't know, maybe 40\n",
+       "4      PT-005                  1988\n",
+       "5      PT-006             around 50\n",
+       "6      PT-007                    19\n",
+       "7      PT-008                    41\n",
+       "8      PT-009                    52\n",
+       "9      PT-010                   NaN\n",
+       "10     PT-011                    45\n",
+       "11     PT-012             approx 36\n",
+       "12     PT-013                  2001\n",
+       "13     PT-014                    30\n",
+       "14     PT-015              maybe 27"
+      ]
+     },
+     "execution_count": 4,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "# What does the column actually contain?\n",
+    "df[['Patient_ID', 'Age_Input']]"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "t-age-logic-explain",
+   "metadata": {},
+   "source": [
+    "Four kinds of value in the column:\n",
+    "- Plain age: `28`, `34`, `19`\n",
+    "- Birth year: `1995`, `1988`, `2001` — needs converting to age\n",
+    "- Free text with a number: `'around 50'`, `'maybe 27'`, `\"Don't know, maybe 40\"`\n",
+    "- `NaN` (PT-010 is genuinely missing)\n",
+    "\n",
+    "The logic: NaN → None; pure number > 1900 → birth year, subtract from 2026; ≤ 1900 → already an age; otherwise pull the first digit run from the text."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "id": "t-age-function",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "CURRENT_YEAR = 2026\n",
+    "\n",
+    "def parse_age_input(value):\n",
+    "    \"\"\"Convert the messy Age_Input column to a clean integer age.\"\"\"\n",
+    "    if pd.isna(value):\n",
+    "        return None\n",
+    "\n",
+    "    # Numeric value — already an int/float, or a string like '34'\n",
+    "    if isinstance(value, (int, float)) and not pd.isna(value):\n",
+    "        numeric_value = int(value)\n",
+    "    else:\n",
+    "        match = re.search(r'\\d+', str(value))\n",
+    "        if not match:\n",
+    "            return None\n",
+    "        numeric_value = int(match.group())\n",
+    "\n",
+    "    if numeric_value < 100:\n",
+    "        return numeric_value           # already an age\n",
+    "    if numeric_value > 1900:\n",
+    "        return CURRENT_YEAR - numeric_value   # birth year\n",
+    "    return numeric_value               # edge case: 100–1900, return as-is"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "t-age-test-explain",
+   "metadata": {},
+   "source": [
+    "Test representative inputs before applying to the whole column so hopefully catches bugs early and makes the logic visible to the room."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "id": "t-age-test",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "28                             -> 28      OK\n",
+      "34                             -> 34      OK\n",
+      "1995                           -> 31      OK\n",
+      "Don't know, maybe 40           -> 40      OK\n",
+      "around 50                      -> 50      OK\n",
+      "nan                            -> None    OK\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Quick sanity checks before applying to the whole column\n",
+    "test_cases = [\n",
+    "    (28,                    28),   # plain integer age\n",
+    "    ('34',                  34),   # age as string\n",
+    "    (1995,                  31),   # birth year\n",
+    "    (\"Don't know, maybe 40\", 40),  # free text\n",
+    "    ('around 50',           50),\n",
+    "    (float('nan'),         None),  # missing\n",
+    "]\n",
+    "for value, expected in test_cases:\n",
+    "    result = parse_age_input(value)\n",
+    "    status = 'OK' if result == expected else f'FAIL (expected {expected})'\n",
+    "    print(f'{str(value):30} -> {str(result):6}  {status}')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "id": "t-age-apply",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "application/vnd.microsoft.datawrangler.viewer.v0+json": {
+       "columns": [
+        {
+         "name": "index",
+         "rawType": "int64",
+         "type": "integer"
+        },
+        {
+         "name": "Patient_ID",
+         "rawType": "str",
+         "type": "string"
+        },
+        {
+         "name": "Age_Input",
+         "rawType": "str",
+         "type": "string"
+        },
+        {
+         "name": "Age_Years",
+         "rawType": "float64",
+         "type": "float"
+        }
+       ],
+       "ref": "b8c237ff-92fb-4ec5-a235-32ae01c7f0e9",
+       "rows": [
+        [
+         "0",
+         "PT-001",
+         "28",
+         "28.0"
+        ],
+        [
+         "1",
+         "PT-002",
+         "34",
+         "34.0"
+        ],
+        [
+         "2",
+         "PT-003",
+         "1995",
+         "31.0"
+        ],
+        [
+         "3",
+         "PT-004",
+         "Don't know, maybe 40",
+         "40.0"
+        ],
+        [
+         "4",
+         "PT-005",
+         "1988",
+         "38.0"
+        ],
+        [
+         "5",
+         "PT-006",
+         "around 50",
+         "50.0"
+        ],
+        [
+         "6",
+         "PT-007",
+         "19",
+         "19.0"
+        ],
+        [
+         "7",
+         "PT-008",
+         "41",
+         "41.0"
+        ],
+        [
+         "8",
+         "PT-009",
+         "52",
+         "52.0"
+        ],
+        [
+         "9",
+         "PT-010",
+         null,
+         null
+        ],
+        [
+         "10",
+         "PT-011",
+         "45",
+         "45.0"
+        ],
+        [
+         "11",
+         "PT-012",
+         "approx 36",
+         "36.0"
+        ],
+        [
+         "12",
+         "PT-013",
+         "2001",
+         "25.0"
+        ],
+        [
+         "13",
+         "PT-014",
+         "30",
+         "30.0"
+        ],
+        [
+         "14",
+         "PT-015",
+         "maybe 27",
+         "27.0"
+        ]
+       ],
+       "shape": {
+        "columns": 3,
+        "rows": 15
+       }
+      },
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>Patient_ID</th>\n",
+       "      <th>Age_Input</th>\n",
+       "      <th>Age_Years</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>0</th>\n",
+       "      <td>PT-001</td>\n",
+       "      <td>28</td>\n",
+       "      <td>28.0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>1</th>\n",
+       "      <td>PT-002</td>\n",
+       "      <td>34</td>\n",
+       "      <td>34.0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2</th>\n",
+       "      <td>PT-003</td>\n",
+       "      <td>1995</td>\n",
+       "      <td>31.0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>3</th>\n",
+       "      <td>PT-004</td>\n",
+       "      <td>Don't know, maybe 40</td>\n",
+       "      <td>40.0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>4</th>\n",
+       "      <td>PT-005</td>\n",
+       "      <td>1988</td>\n",
+       "      <td>38.0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>5</th>\n",
+       "      <td>PT-006</td>\n",
+       "      <td>around 50</td>\n",
+       "      <td>50.0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>6</th>\n",
+       "      <td>PT-007</td>\n",
+       "      <td>19</td>\n",
+       "      <td>19.0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>7</th>\n",
+       "      <td>PT-008</td>\n",
+       "      <td>41</td>\n",
+       "      <td>41.0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>8</th>\n",
+       "      <td>PT-009</td>\n",
+       "      <td>52</td>\n",
+       "      <td>52.0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>9</th>\n",
+       "      <td>PT-010</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>NaN</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>10</th>\n",
+       "      <td>PT-011</td>\n",
+       "      <td>45</td>\n",
+       "      <td>45.0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>11</th>\n",
+       "      <td>PT-012</td>\n",
+       "      <td>approx 36</td>\n",
+       "      <td>36.0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>12</th>\n",
+       "      <td>PT-013</td>\n",
+       "      <td>2001</td>\n",
+       "      <td>25.0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>13</th>\n",
+       "      <td>PT-014</td>\n",
+       "      <td>30</td>\n",
+       "      <td>30.0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>14</th>\n",
+       "      <td>PT-015</td>\n",
+       "      <td>maybe 27</td>\n",
+       "      <td>27.0</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "   Patient_ID             Age_Input  Age_Years\n",
+       "0      PT-001                    28       28.0\n",
+       "1      PT-002                    34       34.0\n",
+       "2      PT-003                  1995       31.0\n",
+       "3      PT-004  Don't know, maybe 40       40.0\n",
+       "4      PT-005                  1988       38.0\n",
+       "5      PT-006             around 50       50.0\n",
+       "6      PT-007                    19       19.0\n",
+       "7      PT-008                    41       41.0\n",
+       "8      PT-009                    52       52.0\n",
+       "9      PT-010                   NaN        NaN\n",
+       "10     PT-011                    45       45.0\n",
+       "11     PT-012             approx 36       36.0\n",
+       "12     PT-013                  2001       25.0\n",
+       "13     PT-014                    30       30.0\n",
+       "14     PT-015              maybe 27       27.0"
+      ]
+     },
+     "execution_count": 7,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "df['Age_Years'] = df['Age_Input'].apply(parse_age_input)\n",
+    "df[['Patient_ID', 'Age_Input', 'Age_Years']]"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "t-date-explain",
+   "metadata": {},
+   "source": [
+    "### 2b — Parse `Implant_Date`\n",
+    "\n",
+    "Show the raw column and count the formats."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "id": "t-date-show-raw",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "<StringArray>\n",
+       "[    '12/05/2024',     '2024-06-15',  'May 12th 2024',     '07/11/2023',\n",
+       "     '2023/09/01',   'March 3 2024',     '2024-01-20',     '20/02/2024',\n",
+       " 'April 5th 2024',     '2024-08-30',     '11/12/2023',     '2023-10-14',\n",
+       "  'June 9th 2024',     '2024/04/18',     '15/07/2024']\n",
+       "Length: 15, dtype: str"
+      ]
+     },
+     "execution_count": 8,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "# How many different formats do we actually have?\n",
+    "df['Implant_Date'].unique()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "t-date-pitfall-explain",
+   "metadata": {},
+   "source": [
+    "The tempting shortcut: `pd.to_datetime(dayfirst=True)` over everything. The bug: `dayfirst=True` with `format='mixed'` also reorders month/day inside year-first strings — `2023-09-01` becomes January 9th, not September 1st. Demo this live."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 9,
+   "id": "t-date-pitfall-demo",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "With dayfirst=True (WRONG for year-first dates):\n",
+      "[Timestamp('2023-01-09 00:00:00'), Timestamp('2023-01-09 00:00:00')]\n",
+      "\n",
+      "With dayfirst=False (correct for year-first, wrong for DD/MM/YYYY):\n",
+      "[Timestamp('2023-09-01 00:00:00'), Timestamp('2023-09-01 00:00:00')]\n"
+     ]
+    }
+   ],
+   "source": [
+    "# DEMONSTRATION OF THE PITFALL — do not use this in the actual pipeline\n",
+    "demo = pd.Series(['2023-09-01', '2023/09/01'])\n",
+    "print('With dayfirst=True (WRONG for year-first dates):')\n",
+    "print(pd.to_datetime(demo, format='mixed', dayfirst=True).tolist())\n",
+    "print()\n",
+    "print('With dayfirst=False (correct for year-first, wrong for DD/MM/YYYY):')\n",
+    "print(pd.to_datetime(demo, format='mixed', dayfirst=False).tolist())"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "t-date-fix-explain",
+   "metadata": {},
+   "source": [
+    "No single `pd.to_datetime` call handles both `DD/MM/YYYY` and `YYYY/MM/DD` safely. The fix: detect which category each value is before handing it to pandas.\n",
+    "\n",
+    "Two steps:\n",
+    "1. Strip ordinal suffixes (`'5th'` → `'5'`) so `'April 5th 2024'` can parse.\n",
+    "2. Regex-detect year-first format (`^\\d{4}[-/]`). If matched, reorder to ISO directly — pandas never gets the chance to misinterpret it."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 10,
+   "id": "t-date-step1",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "application/vnd.microsoft.datawrangler.viewer.v0+json": {
+       "columns": [
+        {
+         "name": "index",
+         "rawType": "int64",
+         "type": "integer"
+        },
+        {
+         "name": "0",
+         "rawType": "str",
+         "type": "string"
+        }
+       ],
+       "ref": "1b1a5592-74c1-4e41-9855-59f411d7c0af",
+       "rows": [
+        [
+         "0",
+         "May 12 2024"
+        ],
+        [
+         "1",
+         "April 5 2024"
+        ],
+        [
+         "2",
+         "2024-06-15"
+        ]
+       ],
+       "shape": {
+        "columns": 1,
+        "rows": 3
+       }
+      },
+      "text/plain": [
+       "0     May 12 2024\n",
+       "1    April 5 2024\n",
+       "2      2024-06-15\n",
+       "dtype: str"
+      ]
+     },
+     "execution_count": 10,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "# Step 1: strip ordinal suffixes\n",
+    "# 'May 12th 2024' -> 'May 12 2024', 'April 5th 2024' -> 'April 5 2024'\n",
+    "demo_dates = pd.Series(['May 12th 2024', 'April 5th 2024', '2024-06-15'])\n",
+    "demo_dates.str.replace(r'(\\d+)(st|nd|rd|th)', r'\\1', regex=True)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 11,
+   "id": "t-date-step2",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "2023-09-01           year-first? True\n",
+      "2023/09/01           year-first? True\n",
+      "2024/04/18           year-first? True\n",
+      "12/05/2024           year-first? False\n",
+      "May 12 2024          year-first? False\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Step 2: the regex that detects year-first formats\n",
+    "# Matches: 2023-09-01, 2024/04/18, 2024-06-15 — anything starting with 4 digits\n",
+    "pattern = r'^(\\d{4})[-/](\\d{1,2})[-/](\\d{1,2})$'\n",
+    "for v in ['2023-09-01', '2023/09/01', '2024/04/18', '12/05/2024', 'May 12 2024']:\n",
+    "    matched = bool(re.match(pattern, v.strip()))\n",
+    "    print(f'{v:20} year-first? {matched}')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 12,
+   "id": "t-date-function",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def parse_implant_date(raw):\n",
+    "    \"\"\"Return YYYY-MM-DD string for any date format found in this dataset.\"\"\"\n",
+    "    if pd.isna(raw):\n",
+    "        return None\n",
+    "    s = re.sub(r'(\\d+)(st|nd|rd|th)', r'\\1', str(raw).strip())\n",
+    "    # Year-first: handle before dayfirst=True to avoid month/day swap\n",
+    "    m = re.match(r'^(\\d{4})[-/](\\d{1,2})[-/](\\d{1,2})$', s)\n",
+    "    if m:\n",
+    "        y, mo, d = m.groups()\n",
+    "        return f'{y}-{int(mo):02d}-{int(d):02d}'\n",
+    "    # Named months and DD/MM/YYYY — pandas can handle these with dayfirst=True\n",
+    "    try:\n",
+    "        return pd.to_datetime(s, dayfirst=True).strftime('%Y-%m-%d')\n",
+    "    except Exception:\n",
+    "        return None"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 13,
+   "id": "t-date-test",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "12/05/2024             -> 2024-05-12  OK\n",
+      "2024-06-15             -> 2024-06-15  OK\n",
+      "May 12th 2024          -> 2024-05-12  OK\n",
+      "07/11/2023             -> 2023-11-07  OK\n",
+      "2023/09/01             -> 2023-09-01  OK\n",
+      "March 3 2024           -> 2024-03-03  OK\n",
+      "20/02/2024             -> 2024-02-20  OK\n",
+      "April 5th 2024         -> 2024-04-05  OK\n",
+      "2024/04/18             -> 2024-04-18  OK\n",
+      "15/07/2024             -> 2024-07-15  OK\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Test against every format in the dataset\n",
+    "date_tests = [\n",
+    "    ('12/05/2024',   '2024-05-12'),\n",
+    "    ('2024-06-15',   '2024-06-15'),\n",
+    "    ('May 12th 2024','2024-05-12'),\n",
+    "    ('07/11/2023',   '2023-11-07'),\n",
+    "    ('2023/09/01',   '2023-09-01'),   # the tricky one\n",
+    "    ('March 3 2024', '2024-03-03'),\n",
+    "    ('20/02/2024',   '2024-02-20'),\n",
+    "    ('April 5th 2024','2024-04-05'),\n",
+    "    ('2024/04/18',   '2024-04-18'),\n",
+    "    ('15/07/2024',   '2024-07-15'),\n",
+    "]\n",
+    "for raw, expected in date_tests:\n",
+    "    got = parse_implant_date(raw)\n",
+    "    status = 'OK' if got == expected else f'FAIL (expected {expected})'\n",
+    "    print(f'{raw:22} -> {got}  {status}')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 14,
+   "id": "t-date-apply",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "application/vnd.microsoft.datawrangler.viewer.v0+json": {
+       "columns": [
+        {
+         "name": "index",
+         "rawType": "int64",
+         "type": "integer"
+        },
+        {
+         "name": "Patient_ID",
+         "rawType": "str",
+         "type": "string"
+        },
+        {
+         "name": "Implant_Date",
+         "rawType": "str",
+         "type": "string"
+        },
+        {
+         "name": "Implant_Date_Clean",
+         "rawType": "str",
+         "type": "string"
+        }
+       ],
+       "ref": "1d605327-8e8d-4cfd-890a-76a51c36ddbe",
+       "rows": [
+        [
+         "0",
+         "PT-001",
+         "12/05/2024",
+         "2024-05-12"
+        ],
+        [
+         "1",
+         "PT-002",
+         "2024-06-15",
+         "2024-06-15"
+        ],
+        [
+         "2",
+         "PT-003",
+         "May 12th 2024",
+         "2024-05-12"
+        ],
+        [
+         "3",
+         "PT-004",
+         "07/11/2023",
+         "2023-11-07"
+        ],
+        [
+         "4",
+         "PT-005",
+         "2023/09/01",
+         "2023-09-01"
+        ],
+        [
+         "5",
+         "PT-006",
+         "March 3 2024",
+         "2024-03-03"
+        ],
+        [
+         "6",
+         "PT-007",
+         "2024-01-20",
+         "2024-01-20"
+        ],
+        [
+         "7",
+         "PT-008",
+         "20/02/2024",
+         "2024-02-20"
+        ],
+        [
+         "8",
+         "PT-009",
+         "April 5th 2024",
+         "2024-04-05"
+        ],
+        [
+         "9",
+         "PT-010",
+         "2024-08-30",
+         "2024-08-30"
+        ],
+        [
+         "10",
+         "PT-011",
+         "11/12/2023",
+         "2023-12-11"
+        ],
+        [
+         "11",
+         "PT-012",
+         "2023-10-14",
+         "2023-10-14"
+        ],
+        [
+         "12",
+         "PT-013",
+         "June 9th 2024",
+         "2024-06-09"
+        ],
+        [
+         "13",
+         "PT-014",
+         "2024/04/18",
+         "2024-04-18"
+        ],
+        [
+         "14",
+         "PT-015",
+         "15/07/2024",
+         "2024-07-15"
+        ]
+       ],
+       "shape": {
+        "columns": 3,
+        "rows": 15
+       }
+      },
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>Patient_ID</th>\n",
+       "      <th>Implant_Date</th>\n",
+       "      <th>Implant_Date_Clean</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>0</th>\n",
+       "      <td>PT-001</td>\n",
+       "      <td>12/05/2024</td>\n",
+       "      <td>2024-05-12</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>1</th>\n",
+       "      <td>PT-002</td>\n",
+       "      <td>2024-06-15</td>\n",
+       "      <td>2024-06-15</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2</th>\n",
+       "      <td>PT-003</td>\n",
+       "      <td>May 12th 2024</td>\n",
+       "      <td>2024-05-12</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>3</th>\n",
+       "      <td>PT-004</td>\n",
+       "      <td>07/11/2023</td>\n",
+       "      <td>2023-11-07</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>4</th>\n",
+       "      <td>PT-005</td>\n",
+       "      <td>2023/09/01</td>\n",
+       "      <td>2023-09-01</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>5</th>\n",
+       "      <td>PT-006</td>\n",
+       "      <td>March 3 2024</td>\n",
+       "      <td>2024-03-03</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>6</th>\n",
+       "      <td>PT-007</td>\n",
+       "      <td>2024-01-20</td>\n",
+       "      <td>2024-01-20</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>7</th>\n",
+       "      <td>PT-008</td>\n",
+       "      <td>20/02/2024</td>\n",
+       "      <td>2024-02-20</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>8</th>\n",
+       "      <td>PT-009</td>\n",
+       "      <td>April 5th 2024</td>\n",
+       "      <td>2024-04-05</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>9</th>\n",
+       "      <td>PT-010</td>\n",
+       "      <td>2024-08-30</td>\n",
+       "      <td>2024-08-30</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>10</th>\n",
+       "      <td>PT-011</td>\n",
+       "      <td>11/12/2023</td>\n",
+       "      <td>2023-12-11</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>11</th>\n",
+       "      <td>PT-012</td>\n",
+       "      <td>2023-10-14</td>\n",
+       "      <td>2023-10-14</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>12</th>\n",
+       "      <td>PT-013</td>\n",
+       "      <td>June 9th 2024</td>\n",
+       "      <td>2024-06-09</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>13</th>\n",
+       "      <td>PT-014</td>\n",
+       "      <td>2024/04/18</td>\n",
+       "      <td>2024-04-18</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>14</th>\n",
+       "      <td>PT-015</td>\n",
+       "      <td>15/07/2024</td>\n",
+       "      <td>2024-07-15</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "   Patient_ID    Implant_Date Implant_Date_Clean\n",
+       "0      PT-001      12/05/2024         2024-05-12\n",
+       "1      PT-002      2024-06-15         2024-06-15\n",
+       "2      PT-003   May 12th 2024         2024-05-12\n",
+       "3      PT-004      07/11/2023         2023-11-07\n",
+       "4      PT-005      2023/09/01         2023-09-01\n",
+       "5      PT-006    March 3 2024         2024-03-03\n",
+       "6      PT-007      2024-01-20         2024-01-20\n",
+       "7      PT-008      20/02/2024         2024-02-20\n",
+       "8      PT-009  April 5th 2024         2024-04-05\n",
+       "9      PT-010      2024-08-30         2024-08-30\n",
+       "10     PT-011      11/12/2023         2023-12-11\n",
+       "11     PT-012      2023-10-14         2023-10-14\n",
+       "12     PT-013   June 9th 2024         2024-06-09\n",
+       "13     PT-014      2024/04/18         2024-04-18\n",
+       "14     PT-015      15/07/2024         2024-07-15"
+      ]
+     },
+     "execution_count": 14,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "df['Implant_Date_Clean'] = df['Implant_Date'].apply(parse_implant_date)\n",
+    "df[['Patient_ID', 'Implant_Date', 'Implant_Date_Clean']]"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "t-cause-explain",
+   "metadata": {},
+   "source": [
+    "### 2c — Standardise `Amputation_Cause`\n",
+    "\n",
+    "Values are correct — just inconsistent casing and whitespace. A single chained call handles it.\n",
+    "\n",
+    "- `str.strip()`: removes leading/trailing whitespace\n",
+    "- `str.lower()`: normalises `'TRAUMA'`, `'Trauma'`, `' TRAUMA'` all to `'trauma'`\n",
+    "\n",
+    "PT-012 has `'diabets'` — a genuine typo. Worth pointing it out: lowercase/strip doesn't catch spelling errors. That needs a controlled vocabulary or fuzzy matching step, which is out of scope today."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 15,
+   "id": "t-cause-apply",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "application/vnd.microsoft.datawrangler.viewer.v0+json": {
+       "columns": [
+        {
+         "name": "index",
+         "rawType": "int64",
+         "type": "integer"
+        },
+        {
+         "name": "Patient_ID",
+         "rawType": "str",
+         "type": "string"
+        },
+        {
+         "name": "Amputation_Cause",
+         "rawType": "str",
+         "type": "string"
+        },
+        {
+         "name": "Amputation_Cause_Clean",
+         "rawType": "str",
+         "type": "string"
+        }
+       ],
+       "ref": "c92d04df-df19-4e9f-960c-efb002bbbf59",
+       "rows": [
+        [
+         "0",
+         "PT-001",
+         "Trauma",
+         "trauma"
+        ],
+        [
+         "1",
+         "PT-002",
+         "diabetes",
+         "diabetes"
+        ],
+        [
+         "2",
+         "PT-003",
+         "TRAUMA",
+         "trauma"
+        ],
+        [
+         "3",
+         "PT-004",
+         "blast injury",
+         "blast injury"
+        ],
+        [
+         "4",
+         "PT-005",
+         "Trauma",
+         "trauma"
+        ],
+        [
+         "5",
+         "PT-006",
+         "diabetes",
+         "diabetes"
+        ],
+        [
+         "6",
+         "PT-007",
+         "TRAUMA",
+         "trauma"
+        ],
+        [
+         "7",
+         "PT-008",
+         "blast Injury",
+         "blast injury"
+        ],
+        [
+         "8",
+         "PT-009",
+         "trauma",
+         "trauma"
+        ],
+        [
+         "9",
+         "PT-010",
+         "DIABETES",
+         "diabetes"
+        ],
+        [
+         "10",
+         "PT-011",
+         "Trauma",
+         "trauma"
+        ],
+        [
+         "11",
+         "PT-012",
+         "diabets",
+         "diabets"
+        ],
+        [
+         "12",
+         "PT-013",
+         "TRAUMA",
+         "trauma"
+        ],
+        [
+         "13",
+         "PT-014",
+         "blast injury",
+         "blast injury"
+        ],
+        [
+         "14",
+         "PT-015",
+         "trauma",
+         "trauma"
+        ]
+       ],
+       "shape": {
+        "columns": 3,
+        "rows": 15
+       }
+      },
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>Patient_ID</th>\n",
+       "      <th>Amputation_Cause</th>\n",
+       "      <th>Amputation_Cause_Clean</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>0</th>\n",
+       "      <td>PT-001</td>\n",
+       "      <td>Trauma</td>\n",
+       "      <td>trauma</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>1</th>\n",
+       "      <td>PT-002</td>\n",
+       "      <td>diabetes</td>\n",
+       "      <td>diabetes</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2</th>\n",
+       "      <td>PT-003</td>\n",
+       "      <td>TRAUMA</td>\n",
+       "      <td>trauma</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>3</th>\n",
+       "      <td>PT-004</td>\n",
+       "      <td>blast injury</td>\n",
+       "      <td>blast injury</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>4</th>\n",
+       "      <td>PT-005</td>\n",
+       "      <td>Trauma</td>\n",
+       "      <td>trauma</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>5</th>\n",
+       "      <td>PT-006</td>\n",
+       "      <td>diabetes</td>\n",
+       "      <td>diabetes</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>6</th>\n",
+       "      <td>PT-007</td>\n",
+       "      <td>TRAUMA</td>\n",
+       "      <td>trauma</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>7</th>\n",
+       "      <td>PT-008</td>\n",
+       "      <td>blast Injury</td>\n",
+       "      <td>blast injury</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>8</th>\n",
+       "      <td>PT-009</td>\n",
+       "      <td>trauma</td>\n",
+       "      <td>trauma</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>9</th>\n",
+       "      <td>PT-010</td>\n",
+       "      <td>DIABETES</td>\n",
+       "      <td>diabetes</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>10</th>\n",
+       "      <td>PT-011</td>\n",
+       "      <td>Trauma</td>\n",
+       "      <td>trauma</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>11</th>\n",
+       "      <td>PT-012</td>\n",
+       "      <td>diabets</td>\n",
+       "      <td>diabets</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>12</th>\n",
+       "      <td>PT-013</td>\n",
+       "      <td>TRAUMA</td>\n",
+       "      <td>trauma</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>13</th>\n",
+       "      <td>PT-014</td>\n",
+       "      <td>blast injury</td>\n",
+       "      <td>blast injury</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>14</th>\n",
+       "      <td>PT-015</td>\n",
+       "      <td>trauma</td>\n",
+       "      <td>trauma</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "   Patient_ID Amputation_Cause Amputation_Cause_Clean\n",
+       "0      PT-001           Trauma                 trauma\n",
+       "1      PT-002         diabetes               diabetes\n",
+       "2      PT-003           TRAUMA                 trauma\n",
+       "3      PT-004     blast injury           blast injury\n",
+       "4      PT-005           Trauma                 trauma\n",
+       "5      PT-006         diabetes               diabetes\n",
+       "6      PT-007           TRAUMA                 trauma\n",
+       "7      PT-008     blast Injury           blast injury\n",
+       "8      PT-009           trauma                 trauma\n",
+       "9      PT-010         DIABETES               diabetes\n",
+       "10     PT-011           Trauma                 trauma\n",
+       "11     PT-012          diabets                diabets\n",
+       "12     PT-013           TRAUMA                 trauma\n",
+       "13     PT-014     blast injury           blast injury\n",
+       "14     PT-015           trauma                 trauma"
+      ]
+     },
+     "execution_count": 15,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "df['Amputation_Cause_Clean'] = df['Amputation_Cause'].str.lower().str.strip()\n",
+    "df[['Patient_ID', 'Amputation_Cause', 'Amputation_Cause_Clean']]"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "t-cause-typo-callout",
+   "metadata": {},
+   "source": [
+    "Run `value_counts()` — `'diabets'` appears alongside `'diabetes'`. Shows the limit of a pure formatting fix."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 16,
+   "id": "t-cause-value-counts",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "application/vnd.microsoft.datawrangler.viewer.v0+json": {
+       "columns": [
+        {
+         "name": "Amputation_Cause_Clean",
+         "rawType": "str",
+         "type": "string"
+        },
+        {
+         "name": "count",
+         "rawType": "int64",
+         "type": "integer"
+        }
+       ],
+       "ref": "ad1d1797-2367-4904-9219-988fedc24910",
+       "rows": [
+        [
+         "trauma",
+         "8"
+        ],
+        [
+         "diabetes",
+         "3"
+        ],
+        [
+         "blast injury",
+         "3"
+        ],
+        [
+         "diabets",
+         "1"
+        ]
+       ],
+       "shape": {
+        "columns": 1,
+        "rows": 4
+       }
+      },
+      "text/plain": [
+       "Amputation_Cause_Clean\n",
+       "trauma          8\n",
+       "diabetes        3\n",
+       "blast injury    3\n",
+       "diabets         1\n",
+       "Name: count, dtype: int64"
+      ]
+     },
+     "execution_count": 16,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "df['Amputation_Cause_Clean'].value_counts()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "t-s3-pii-header",
+   "metadata": {},
+   "source": [
+    "---\n",
+    "## Section 3 — Cybersecurity & Cloud Privacy (PII Masking)\n",
+    "\n",
+    "The data is clean but still contains patient names. Before it moves anywhere outside the secure environment, names must go.\n",
+    "\n",
+    "Two options: delete the column entirely, or pseudonymise by trying to replace each name with a stable token derived from it. Pseudonymisation lets two datasets still match on the same person without re-exposing the name.\n",
+    "\n",
+    "SHA-256: a cryptographic hash function. Same input always produces the same 64-character hex string. One-way so you can't reverse it to recover the original name. "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 17,
+   "id": "t-pii-demo",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Input : 'John Doe'\n",
+      "Hash  : 94890005f3b2117a353da7260259531878cae4f541bf59998511887d1f0221a5\n",
+      "Length: 64 characters\n"
+     ]
+    }
+   ],
+   "source": [
+    "# DEMO: what SHA-256 looks like\n",
+    "import hashlib\n",
+    "\n",
+    "sample = 'John Doe'\n",
+    "digest = hashlib.sha256(sample.strip().lower().encode('utf-8')).hexdigest()\n",
+    "print(f'Input : {sample!r}')\n",
+    "print(f'Hash  : {digest}')\n",
+    "print(f'Length: {len(digest)} characters')"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "t-pii-normalise-explain",
+   "metadata": {},
+   "source": [
+    "Worth asking why `.strip().lower()` before hashing. `'John Doe'` and `' john doe '` produce different hashes so the same person with slightly different casing across two datasets won't match. Normalise first to ensure they do.\n",
+    "\n",
+    "Then: why `.encode('utf-8')`? SHA-256 operates on bytes, not strings."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 18,
+   "id": "t-pii-function",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def anonymize_name(value):\n",
+    "    \"\"\"Replace a patient name with its SHA-256 hash (normalised first).\"\"\"\n",
+    "    normalized = str(value).strip().lower()\n",
+    "    return hashlib.sha256(normalized.encode('utf-8')).hexdigest()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 19,
+   "id": "t-pii-apply",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "application/vnd.microsoft.datawrangler.viewer.v0+json": {
+       "columns": [
+        {
+         "name": "index",
+         "rawType": "int64",
+         "type": "integer"
+        },
+        {
+         "name": "Patient_ID",
+         "rawType": "str",
+         "type": "string"
+        },
+        {
+         "name": "Full_Name",
+         "rawType": "str",
+         "type": "string"
+        }
+       ],
+       "ref": "5d6db997-043e-471c-a496-5eefe53d0622",
+       "rows": [
+        [
+         "0",
+         "PT-001",
+         "94890005f3b2117a353da7260259531878cae4f541bf59998511887d1f0221a5"
+        ],
+        [
+         "1",
+         "PT-002",
+         "a083bb1e6e0e335305d8c73f05df267a9e73d7a0ff6bbea078d0696c287e9c34"
+        ],
+        [
+         "2",
+         "PT-003",
+         "727a69291f7d286125c3fa541dc8f063a0264f9413a9ff13e8c9ff1c0df83894"
+        ],
+        [
+         "3",
+         "PT-004",
+         "02e82576b0769a2397331db8f749d6815cfec92e91b0ae287c77367a12d2bafc"
+        ],
+        [
+         "4",
+         "PT-005",
+         "8ec077386d04ed3d0182401b5465002bbcf07379999552ad0d3e862db20ee06d"
+        ]
+       ],
+       "shape": {
+        "columns": 2,
+        "rows": 5
+       }
+      },
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>Patient_ID</th>\n",
+       "      <th>Full_Name</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>0</th>\n",
+       "      <td>PT-001</td>\n",
+       "      <td>94890005f3b2117a353da7260259531878cae4f541bf59...</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>1</th>\n",
+       "      <td>PT-002</td>\n",
+       "      <td>a083bb1e6e0e335305d8c73f05df267a9e73d7a0ff6bbe...</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2</th>\n",
+       "      <td>PT-003</td>\n",
+       "      <td>727a69291f7d286125c3fa541dc8f063a0264f9413a9ff...</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>3</th>\n",
+       "      <td>PT-004</td>\n",
+       "      <td>02e82576b0769a2397331db8f749d6815cfec92e91b0ae...</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>4</th>\n",
+       "      <td>PT-005</td>\n",
+       "      <td>8ec077386d04ed3d0182401b5465002bbcf07379999552...</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "  Patient_ID                                          Full_Name\n",
+       "0     PT-001  94890005f3b2117a353da7260259531878cae4f541bf59...\n",
+       "1     PT-002  a083bb1e6e0e335305d8c73f05df267a9e73d7a0ff6bbe...\n",
+       "2     PT-003  727a69291f7d286125c3fa541dc8f063a0264f9413a9ff...\n",
+       "3     PT-004  02e82576b0769a2397331db8f749d6815cfec92e91b0ae...\n",
+       "4     PT-005  8ec077386d04ed3d0182401b5465002bbcf07379999552..."
+      ]
+     },
+     "execution_count": 19,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "# Apply before the join — this is the ETL 'Transform' step protecting PII\n",
+    "df['Full_Name'] = df['Full_Name'].apply(anonymize_name)\n",
+    "df[['Patient_ID', 'Full_Name']].head()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "t-pii-nan-callout",
+   "metadata": {},
+   "source": [
+    "PT-007 had `NaN` in `Full_Name`. After `str(value)` it becomes the string `'nan'`, which hashes consistently. A production system might return a sentinel (`None`) instead — fine to mention as an edge case, but don't let it derail the session. The important concept is the hashing."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "t-s4-joins-header",
+   "metadata": {},
+   "source": [
+    "---\n",
+    "## Section 4 — Relational Storage & Joins\n",
+    "\n",
+    "Clean, privacy-safe records → join to the device inventory to enrich them.\n",
+    "\n",
+    "Classic relational structure:\n",
+    "- `Device_Model_ID` is the **foreign key** in the patient table\n",
+    "- `Device_Model_ID` is the **primary key** in the inventory table\n",
+    "- Inner join: keep only rows that match on both sides\n",
+    "\n",
+    "Worth asking why inner join over left join. Listening for: inner join drops patients with an unknown device ID, which surfaces data entry errors rather than silently producing NaN columns."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 20,
+   "id": "t-join-inventory",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "application/vnd.microsoft.datawrangler.viewer.v0+json": {
+       "columns": [
+        {
+         "name": "index",
+         "rawType": "int64",
+         "type": "integer"
+        },
+        {
+         "name": "Device_Model_ID",
+         "rawType": "str",
+         "type": "string"
+        },
+        {
+         "name": "Model_Name",
+         "rawType": "str",
+         "type": "string"
+        },
+        {
+         "name": "Cost_USD",
+         "rawType": "int64",
+         "type": "integer"
+        },
+        {
+         "name": "Manufacturer",
+         "rawType": "str",
+         "type": "string"
+        }
+       ],
+       "ref": "718ca8d3-fc34-4b3e-8e03-a5c9acc16e1d",
+       "rows": [
+        [
+         "0",
+         "M210",
+         "AeroStep Lite",
+         "950",
+         "Stride MedTech"
+        ],
+        [
+         "1",
+         "M302",
+         "FlexFoot Alpha",
+         "1200",
+         "Global Limb Works"
+        ],
+        [
+         "2",
+         "M404",
+         "CrestFit Pro",
+         "1850",
+         "OrthoSphere"
+        ],
+        [
+         "3",
+         "M505",
+         "AdaptMax Field",
+         "2100",
+         "Humanity Mobility Systems"
+        ]
+       ],
+       "shape": {
+        "columns": 4,
+        "rows": 4
+       }
+      },
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>Device_Model_ID</th>\n",
+       "      <th>Model_Name</th>\n",
+       "      <th>Cost_USD</th>\n",
+       "      <th>Manufacturer</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>0</th>\n",
+       "      <td>M210</td>\n",
+       "      <td>AeroStep Lite</td>\n",
+       "      <td>950</td>\n",
+       "      <td>Stride MedTech</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>1</th>\n",
+       "      <td>M302</td>\n",
+       "      <td>FlexFoot Alpha</td>\n",
+       "      <td>1200</td>\n",
+       "      <td>Global Limb Works</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2</th>\n",
+       "      <td>M404</td>\n",
+       "      <td>CrestFit Pro</td>\n",
+       "      <td>1850</td>\n",
+       "      <td>OrthoSphere</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>3</th>\n",
+       "      <td>M505</td>\n",
+       "      <td>AdaptMax Field</td>\n",
+       "      <td>2100</td>\n",
+       "      <td>Humanity Mobility Systems</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "  Device_Model_ID      Model_Name  Cost_USD               Manufacturer\n",
+       "0            M210   AeroStep Lite       950             Stride MedTech\n",
+       "1            M302  FlexFoot Alpha      1200          Global Limb Works\n",
+       "2            M404    CrestFit Pro      1850                OrthoSphere\n",
+       "3            M505  AdaptMax Field      2100  Humanity Mobility Systems"
+      ]
+     },
+     "execution_count": 20,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "# Build the reference table\n",
+    "device_inventory = {\n",
+    "    'M210': {'Model_Name': 'AeroStep Lite',   'Cost_USD': 950,  'Manufacturer': 'Stride MedTech'},\n",
+    "    'M302': {'Model_Name': 'FlexFoot Alpha',  'Cost_USD': 1200, 'Manufacturer': 'Global Limb Works'},\n",
+    "    'M404': {'Model_Name': 'CrestFit Pro',    'Cost_USD': 1850, 'Manufacturer': 'OrthoSphere'},\n",
+    "    'M505': {'Model_Name': 'AdaptMax Field',  'Cost_USD': 2100, 'Manufacturer': 'Humanity Mobility Systems'},\n",
+    "}\n",
+    "\n",
+    "device_inventory_df = pd.DataFrame.from_dict(device_inventory, orient='index').reset_index()\n",
+    "device_inventory_df = device_inventory_df.rename(columns={'index': 'Device_Model_ID'})\n",
+    "device_inventory_df = device_inventory_df[['Device_Model_ID', 'Model_Name', 'Cost_USD', 'Manufacturer']]\n",
+    "device_inventory_df"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "t-join-dict-explain",
+   "metadata": {},
+   "source": [
+    "A Python dict can't go directly into `pd.merge`. `DataFrame.from_dict(..., orient='index')` converts it — each dict key becomes a row. `reset_index()` makes the key a regular column, then rename it to `Device_Model_ID` so the join has a matching column name on both sides."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 21,
+   "id": "t-join-merge",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "application/vnd.microsoft.datawrangler.viewer.v0+json": {
+       "columns": [
+        {
+         "name": "index",
+         "rawType": "int64",
+         "type": "integer"
+        },
+        {
+         "name": "Patient_ID",
+         "rawType": "str",
+         "type": "string"
+        },
+        {
+         "name": "Device_Model_ID",
+         "rawType": "str",
+         "type": "string"
+        },
+        {
+         "name": "Model_Name",
+         "rawType": "str",
+         "type": "string"
+        },
+        {
+         "name": "Cost_USD",
+         "rawType": "int64",
+         "type": "integer"
+        },
+        {
+         "name": "Manufacturer",
+         "rawType": "str",
+         "type": "string"
+        }
+       ],
+       "ref": "69ba256e-2cfe-465a-b9cd-78a4238e9537",
+       "rows": [
+        [
+         "0",
+         "PT-001",
+         "M302",
+         "FlexFoot Alpha",
+         "1200",
+         "Global Limb Works"
+        ],
+        [
+         "1",
+         "PT-002",
+         "M404",
+         "CrestFit Pro",
+         "1850",
+         "OrthoSphere"
+        ],
+        [
+         "2",
+         "PT-003",
+         "M302",
+         "FlexFoot Alpha",
+         "1200",
+         "Global Limb Works"
+        ],
+        [
+         "3",
+         "PT-004",
+         "M505",
+         "AdaptMax Field",
+         "2100",
+         "Humanity Mobility Systems"
+        ],
+        [
+         "4",
+         "PT-005",
+         "M404",
+         "CrestFit Pro",
+         "1850",
+         "OrthoSphere"
+        ],
+        [
+         "5",
+         "PT-006",
+         "M210",
+         "AeroStep Lite",
+         "950",
+         "Stride MedTech"
+        ],
+        [
+         "6",
+         "PT-007",
+         "M302",
+         "FlexFoot Alpha",
+         "1200",
+         "Global Limb Works"
+        ],
+        [
+         "7",
+         "PT-008",
+         "M505",
+         "AdaptMax Field",
+         "2100",
+         "Humanity Mobility Systems"
+        ],
+        [
+         "8",
+         "PT-009",
+         "M404",
+         "CrestFit Pro",
+         "1850",
+         "OrthoSphere"
+        ],
+        [
+         "9",
+         "PT-010",
+         "M210",
+         "AeroStep Lite",
+         "950",
+         "Stride MedTech"
+        ],
+        [
+         "10",
+         "PT-011",
+         "M302",
+         "FlexFoot Alpha",
+         "1200",
+         "Global Limb Works"
+        ],
+        [
+         "11",
+         "PT-012",
+         "M505",
+         "AdaptMax Field",
+         "2100",
+         "Humanity Mobility Systems"
+        ],
+        [
+         "12",
+         "PT-013",
+         "M404",
+         "CrestFit Pro",
+         "1850",
+         "OrthoSphere"
+        ],
+        [
+         "13",
+         "PT-014",
+         "M210",
+         "AeroStep Lite",
+         "950",
+         "Stride MedTech"
+        ],
+        [
+         "14",
+         "PT-015",
+         "M302",
+         "FlexFoot Alpha",
+         "1200",
+         "Global Limb Works"
+        ]
+       ],
+       "shape": {
+        "columns": 5,
+        "rows": 15
+       }
+      },
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>Patient_ID</th>\n",
+       "      <th>Device_Model_ID</th>\n",
+       "      <th>Model_Name</th>\n",
+       "      <th>Cost_USD</th>\n",
+       "      <th>Manufacturer</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>0</th>\n",
+       "      <td>PT-001</td>\n",
+       "      <td>M302</td>\n",
+       "      <td>FlexFoot Alpha</td>\n",
+       "      <td>1200</td>\n",
+       "      <td>Global Limb Works</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>1</th>\n",
+       "      <td>PT-002</td>\n",
+       "      <td>M404</td>\n",
+       "      <td>CrestFit Pro</td>\n",
+       "      <td>1850</td>\n",
+       "      <td>OrthoSphere</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2</th>\n",
+       "      <td>PT-003</td>\n",
+       "      <td>M302</td>\n",
+       "      <td>FlexFoot Alpha</td>\n",
+       "      <td>1200</td>\n",
+       "      <td>Global Limb Works</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>3</th>\n",
+       "      <td>PT-004</td>\n",
+       "      <td>M505</td>\n",
+       "      <td>AdaptMax Field</td>\n",
+       "      <td>2100</td>\n",
+       "      <td>Humanity Mobility Systems</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>4</th>\n",
+       "      <td>PT-005</td>\n",
+       "      <td>M404</td>\n",
+       "      <td>CrestFit Pro</td>\n",
+       "      <td>1850</td>\n",
+       "      <td>OrthoSphere</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>5</th>\n",
+       "      <td>PT-006</td>\n",
+       "      <td>M210</td>\n",
+       "      <td>AeroStep Lite</td>\n",
+       "      <td>950</td>\n",
+       "      <td>Stride MedTech</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>6</th>\n",
+       "      <td>PT-007</td>\n",
+       "      <td>M302</td>\n",
+       "      <td>FlexFoot Alpha</td>\n",
+       "      <td>1200</td>\n",
+       "      <td>Global Limb Works</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>7</th>\n",
+       "      <td>PT-008</td>\n",
+       "      <td>M505</td>\n",
+       "      <td>AdaptMax Field</td>\n",
+       "      <td>2100</td>\n",
+       "      <td>Humanity Mobility Systems</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>8</th>\n",
+       "      <td>PT-009</td>\n",
+       "      <td>M404</td>\n",
+       "      <td>CrestFit Pro</td>\n",
+       "      <td>1850</td>\n",
+       "      <td>OrthoSphere</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>9</th>\n",
+       "      <td>PT-010</td>\n",
+       "      <td>M210</td>\n",
+       "      <td>AeroStep Lite</td>\n",
+       "      <td>950</td>\n",
+       "      <td>Stride MedTech</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>10</th>\n",
+       "      <td>PT-011</td>\n",
+       "      <td>M302</td>\n",
+       "      <td>FlexFoot Alpha</td>\n",
+       "      <td>1200</td>\n",
+       "      <td>Global Limb Works</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>11</th>\n",
+       "      <td>PT-012</td>\n",
+       "      <td>M505</td>\n",
+       "      <td>AdaptMax Field</td>\n",
+       "      <td>2100</td>\n",
+       "      <td>Humanity Mobility Systems</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>12</th>\n",
+       "      <td>PT-013</td>\n",
+       "      <td>M404</td>\n",
+       "      <td>CrestFit Pro</td>\n",
+       "      <td>1850</td>\n",
+       "      <td>OrthoSphere</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>13</th>\n",
+       "      <td>PT-014</td>\n",
+       "      <td>M210</td>\n",
+       "      <td>AeroStep Lite</td>\n",
+       "      <td>950</td>\n",
+       "      <td>Stride MedTech</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>14</th>\n",
+       "      <td>PT-015</td>\n",
+       "      <td>M302</td>\n",
+       "      <td>FlexFoot Alpha</td>\n",
+       "      <td>1200</td>\n",
+       "      <td>Global Limb Works</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "   Patient_ID Device_Model_ID      Model_Name  Cost_USD  \\\n",
+       "0      PT-001            M302  FlexFoot Alpha      1200   \n",
+       "1      PT-002            M404    CrestFit Pro      1850   \n",
+       "2      PT-003            M302  FlexFoot Alpha      1200   \n",
+       "3      PT-004            M505  AdaptMax Field      2100   \n",
+       "4      PT-005            M404    CrestFit Pro      1850   \n",
+       "5      PT-006            M210   AeroStep Lite       950   \n",
+       "6      PT-007            M302  FlexFoot Alpha      1200   \n",
+       "7      PT-008            M505  AdaptMax Field      2100   \n",
+       "8      PT-009            M404    CrestFit Pro      1850   \n",
+       "9      PT-010            M210   AeroStep Lite       950   \n",
+       "10     PT-011            M302  FlexFoot Alpha      1200   \n",
+       "11     PT-012            M505  AdaptMax Field      2100   \n",
+       "12     PT-013            M404    CrestFit Pro      1850   \n",
+       "13     PT-014            M210   AeroStep Lite       950   \n",
+       "14     PT-015            M302  FlexFoot Alpha      1200   \n",
+       "\n",
+       "                 Manufacturer  \n",
+       "0           Global Limb Works  \n",
+       "1                 OrthoSphere  \n",
+       "2           Global Limb Works  \n",
+       "3   Humanity Mobility Systems  \n",
+       "4                 OrthoSphere  \n",
+       "5              Stride MedTech  \n",
+       "6           Global Limb Works  \n",
+       "7   Humanity Mobility Systems  \n",
+       "8                 OrthoSphere  \n",
+       "9              Stride MedTech  \n",
+       "10          Global Limb Works  \n",
+       "11  Humanity Mobility Systems  \n",
+       "12                OrthoSphere  \n",
+       "13             Stride MedTech  \n",
+       "14          Global Limb Works  "
+      ]
+     },
+     "execution_count": 21,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "patient_device_df = pd.merge(df, device_inventory_df, on='Device_Model_ID', how='inner')\n",
+    "patient_device_df[['Patient_ID', 'Device_Model_ID', 'Model_Name', 'Cost_USD', 'Manufacturer']]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 22,
+   "id": "t-join-check",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Rows before merge: 15\n",
+      "Rows after merge : 15\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Confirm no rows were dropped (all 15 patients have a valid device ID)\n",
+    "print(f'Rows before merge: {len(df)}')\n",
+    "print(f'Rows after merge : {len(patient_device_df)}')\n",
+    "assert len(patient_device_df) == 15, 'Row count mismatch — check for unknown Device_Model_IDs'"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "t-wrapup",
+   "metadata": {},
+   "source": [
+    "---\n",
+    "## Wrap-Up\n",
+    "\n",
+    "Show the final DataFrame: names replaced with hashes, dates standardised, ages numeric, device details joined in. A complete ETL pipeline in ~50 lines.\n",
+    "\n",
+    "Debrief questions:\n",
+    "\n",
+    "1. **Anonymisation vs pseudonymisation** — anonymisation means the original can't be recovered. Pseudonymisation means it *can* with the right key. SHA-256 without a salt leans toward anonymisation, but an attacker who knows the likely names can pre-hash them and compare.\n",
+    "\n",
+    "2. **Which step was ETL vs ELT?** — all ETL: we transformed (cleaned and masked) before loading.\n",
+    "\n",
+    "3. **What cleaning problem did we not solve?** — the `'diabets'` typo.\n",
+    "\n",
+    "4. **What breaks if someone adds device `M606`?** — the inner join silently drops that patient. A left join would surface it as NaN instead. Neither is wrong — depends on your quality gate."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 23,
+   "id": "t-wrapup-final",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "application/vnd.microsoft.datawrangler.viewer.v0+json": {
+       "columns": [
+        {
+         "name": "index",
+         "rawType": "int64",
+         "type": "integer"
+        },
+        {
+         "name": "Patient_ID",
+         "rawType": "str",
+         "type": "string"
+        },
+        {
+         "name": "Full_Name",
+         "rawType": "str",
+         "type": "string"
+        },
+        {
+         "name": "Age_Years",
+         "rawType": "float64",
+         "type": "float"
+        },
+        {
+         "name": "Implant_Date_Clean",
+         "rawType": "str",
+         "type": "string"
+        },
+        {
+         "name": "Amputation_Cause_Clean",
+         "rawType": "str",
+         "type": "string"
+        },
+        {
+         "name": "Device_Model_ID",
+         "rawType": "str",
+         "type": "string"
+        },
+        {
+         "name": "Model_Name",
+         "rawType": "str",
+         "type": "string"
+        },
+        {
+         "name": "Cost_USD",
+         "rawType": "int64",
+         "type": "integer"
+        },
+        {
+         "name": "Manufacturer",
+         "rawType": "str",
+         "type": "string"
+        }
+       ],
+       "ref": "011b185d-ca4b-4b74-8366-5cf61bb2b8a9",
+       "rows": [
+        [
+         "0",
+         "PT-001",
+         "94890005f3b2117a353da7260259531878cae4f541bf59998511887d1f0221a5",
+         "28.0",
+         "2024-05-12",
+         "trauma",
+         "M302",
+         "FlexFoot Alpha",
+         "1200",
+         "Global Limb Works"
+        ],
+        [
+         "1",
+         "PT-002",
+         "a083bb1e6e0e335305d8c73f05df267a9e73d7a0ff6bbea078d0696c287e9c34",
+         "34.0",
+         "2024-06-15",
+         "diabetes",
+         "M404",
+         "CrestFit Pro",
+         "1850",
+         "OrthoSphere"
+        ],
+        [
+         "2",
+         "PT-003",
+         "727a69291f7d286125c3fa541dc8f063a0264f9413a9ff13e8c9ff1c0df83894",
+         "31.0",
+         "2024-05-12",
+         "trauma",
+         "M302",
+         "FlexFoot Alpha",
+         "1200",
+         "Global Limb Works"
+        ],
+        [
+         "3",
+         "PT-004",
+         "02e82576b0769a2397331db8f749d6815cfec92e91b0ae287c77367a12d2bafc",
+         "40.0",
+         "2023-11-07",
+         "blast injury",
+         "M505",
+         "AdaptMax Field",
+         "2100",
+         "Humanity Mobility Systems"
+        ],
+        [
+         "4",
+         "PT-005",
+         "8ec077386d04ed3d0182401b5465002bbcf07379999552ad0d3e862db20ee06d",
+         "38.0",
+         "2023-09-01",
+         "trauma",
+         "M404",
+         "CrestFit Pro",
+         "1850",
+         "OrthoSphere"
+        ],
+        [
+         "5",
+         "PT-006",
+         "fb8bc0d367f5b3bfadcf751a18c5e9aa209cb61bb12f95542ded6ca4d1640bd8",
+         "50.0",
+         "2024-03-03",
+         "diabetes",
+         "M210",
+         "AeroStep Lite",
+         "950",
+         "Stride MedTech"
+        ],
+        [
+         "6",
+         "PT-007",
+         "9b2d5b4678781e53038e91ea5324530a03f27dc1d0e5f6c9bc9d493a23be9de0",
+         "19.0",
+         "2024-01-20",
+         "trauma",
+         "M302",
+         "FlexFoot Alpha",
+         "1200",
+         "Global Limb Works"
+        ],
+        [
+         "7",
+         "PT-008",
+         "e438554de6cf47de7e7bf0c3b0a3c37b33c88d6cb640d04bc3f303cbcc39c565",
+         "41.0",
+         "2024-02-20",
+         "blast injury",
+         "M505",
+         "AdaptMax Field",
+         "2100",
+         "Humanity Mobility Systems"
+        ],
+        [
+         "8",
+         "PT-009",
+         "ad617c24c70ec4c78c958dcee192488ed5306a110ace777b632afcd4d6f7dc83",
+         "52.0",
+         "2024-04-05",
+         "trauma",
+         "M404",
+         "CrestFit Pro",
+         "1850",
+         "OrthoSphere"
+        ],
+        [
+         "9",
+         "PT-010",
+         "ad4a5afe7f5090d3e1c1762aaf41c8a5d6aaa83f92d43eb71a1c72032412128d",
+         null,
+         "2024-08-30",
+         "diabetes",
+         "M210",
+         "AeroStep Lite",
+         "950",
+         "Stride MedTech"
+        ],
+        [
+         "10",
+         "PT-011",
+         "51fb0f03484846ef946ad05820f5281b8ba02d835f51d924ca34c6c24f78cb02",
+         "45.0",
+         "2023-12-11",
+         "trauma",
+         "M302",
+         "FlexFoot Alpha",
+         "1200",
+         "Global Limb Works"
+        ],
+        [
+         "11",
+         "PT-012",
+         "76a2b615f3384695d704ae21371727af0e96c45ab05c4e86e1643062380848e3",
+         "36.0",
+         "2023-10-14",
+         "diabets",
+         "M505",
+         "AdaptMax Field",
+         "2100",
+         "Humanity Mobility Systems"
+        ],
+        [
+         "12",
+         "PT-013",
+         "b67553ab7f2f49b446359f3ffcb2cf0269b100b1f329459161478dee2b79ab21",
+         "25.0",
+         "2024-06-09",
+         "trauma",
+         "M404",
+         "CrestFit Pro",
+         "1850",
+         "OrthoSphere"
+        ],
+        [
+         "13",
+         "PT-014",
+         "38af6b912dcc427ce0a2cfa89af39c03cd64d2ff63807edd2ebf3204fcd4a875",
+         "30.0",
+         "2024-04-18",
+         "blast injury",
+         "M210",
+         "AeroStep Lite",
+         "950",
+         "Stride MedTech"
+        ],
+        [
+         "14",
+         "PT-015",
+         "aae1fe05b6abe5f07d9be6bd785106ba7c447f0948c8853158bfd94553a2e463",
+         "27.0",
+         "2024-07-15",
+         "trauma",
+         "M302",
+         "FlexFoot Alpha",
+         "1200",
+         "Global Limb Works"
+        ]
+       ],
+       "shape": {
+        "columns": 9,
+        "rows": 15
+       }
+      },
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>Patient_ID</th>\n",
+       "      <th>Full_Name</th>\n",
+       "      <th>Age_Years</th>\n",
+       "      <th>Implant_Date_Clean</th>\n",
+       "      <th>Amputation_Cause_Clean</th>\n",
+       "      <th>Device_Model_ID</th>\n",
+       "      <th>Model_Name</th>\n",
+       "      <th>Cost_USD</th>\n",
+       "      <th>Manufacturer</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>0</th>\n",
+       "      <td>PT-001</td>\n",
+       "      <td>94890005f3b2117a353da7260259531878cae4f541bf59...</td>\n",
+       "      <td>28.0</td>\n",
+       "      <td>2024-05-12</td>\n",
+       "      <td>trauma</td>\n",
+       "      <td>M302</td>\n",
+       "      <td>FlexFoot Alpha</td>\n",
+       "      <td>1200</td>\n",
+       "      <td>Global Limb Works</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>1</th>\n",
+       "      <td>PT-002</td>\n",
+       "      <td>a083bb1e6e0e335305d8c73f05df267a9e73d7a0ff6bbe...</td>\n",
+       "      <td>34.0</td>\n",
+       "      <td>2024-06-15</td>\n",
+       "      <td>diabetes</td>\n",
+       "      <td>M404</td>\n",
+       "      <td>CrestFit Pro</td>\n",
+       "      <td>1850</td>\n",
+       "      <td>OrthoSphere</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2</th>\n",
+       "      <td>PT-003</td>\n",
+       "      <td>727a69291f7d286125c3fa541dc8f063a0264f9413a9ff...</td>\n",
+       "      <td>31.0</td>\n",
+       "      <td>2024-05-12</td>\n",
+       "      <td>trauma</td>\n",
+       "      <td>M302</td>\n",
+       "      <td>FlexFoot Alpha</td>\n",
+       "      <td>1200</td>\n",
+       "      <td>Global Limb Works</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>3</th>\n",
+       "      <td>PT-004</td>\n",
+       "      <td>02e82576b0769a2397331db8f749d6815cfec92e91b0ae...</td>\n",
+       "      <td>40.0</td>\n",
+       "      <td>2023-11-07</td>\n",
+       "      <td>blast injury</td>\n",
+       "      <td>M505</td>\n",
+       "      <td>AdaptMax Field</td>\n",
+       "      <td>2100</td>\n",
+       "      <td>Humanity Mobility Systems</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>4</th>\n",
+       "      <td>PT-005</td>\n",
+       "      <td>8ec077386d04ed3d0182401b5465002bbcf07379999552...</td>\n",
+       "      <td>38.0</td>\n",
+       "      <td>2023-09-01</td>\n",
+       "      <td>trauma</td>\n",
+       "      <td>M404</td>\n",
+       "      <td>CrestFit Pro</td>\n",
+       "      <td>1850</td>\n",
+       "      <td>OrthoSphere</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>5</th>\n",
+       "      <td>PT-006</td>\n",
+       "      <td>fb8bc0d367f5b3bfadcf751a18c5e9aa209cb61bb12f95...</td>\n",
+       "      <td>50.0</td>\n",
+       "      <td>2024-03-03</td>\n",
+       "      <td>diabetes</td>\n",
+       "      <td>M210</td>\n",
+       "      <td>AeroStep Lite</td>\n",
+       "      <td>950</td>\n",
+       "      <td>Stride MedTech</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>6</th>\n",
+       "      <td>PT-007</td>\n",
+       "      <td>9b2d5b4678781e53038e91ea5324530a03f27dc1d0e5f6...</td>\n",
+       "      <td>19.0</td>\n",
+       "      <td>2024-01-20</td>\n",
+       "      <td>trauma</td>\n",
+       "      <td>M302</td>\n",
+       "      <td>FlexFoot Alpha</td>\n",
+       "      <td>1200</td>\n",
+       "      <td>Global Limb Works</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>7</th>\n",
+       "      <td>PT-008</td>\n",
+       "      <td>e438554de6cf47de7e7bf0c3b0a3c37b33c88d6cb640d0...</td>\n",
+       "      <td>41.0</td>\n",
+       "      <td>2024-02-20</td>\n",
+       "      <td>blast injury</td>\n",
+       "      <td>M505</td>\n",
+       "      <td>AdaptMax Field</td>\n",
+       "      <td>2100</td>\n",
+       "      <td>Humanity Mobility Systems</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>8</th>\n",
+       "      <td>PT-009</td>\n",
+       "      <td>ad617c24c70ec4c78c958dcee192488ed5306a110ace77...</td>\n",
+       "      <td>52.0</td>\n",
+       "      <td>2024-04-05</td>\n",
+       "      <td>trauma</td>\n",
+       "      <td>M404</td>\n",
+       "      <td>CrestFit Pro</td>\n",
+       "      <td>1850</td>\n",
+       "      <td>OrthoSphere</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>9</th>\n",
+       "      <td>PT-010</td>\n",
+       "      <td>ad4a5afe7f5090d3e1c1762aaf41c8a5d6aaa83f92d43e...</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>2024-08-30</td>\n",
+       "      <td>diabetes</td>\n",
+       "      <td>M210</td>\n",
+       "      <td>AeroStep Lite</td>\n",
+       "      <td>950</td>\n",
+       "      <td>Stride MedTech</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>10</th>\n",
+       "      <td>PT-011</td>\n",
+       "      <td>51fb0f03484846ef946ad05820f5281b8ba02d835f51d9...</td>\n",
+       "      <td>45.0</td>\n",
+       "      <td>2023-12-11</td>\n",
+       "      <td>trauma</td>\n",
+       "      <td>M302</td>\n",
+       "      <td>FlexFoot Alpha</td>\n",
+       "      <td>1200</td>\n",
+       "      <td>Global Limb Works</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>11</th>\n",
+       "      <td>PT-012</td>\n",
+       "      <td>76a2b615f3384695d704ae21371727af0e96c45ab05c4e...</td>\n",
+       "      <td>36.0</td>\n",
+       "      <td>2023-10-14</td>\n",
+       "      <td>diabets</td>\n",
+       "      <td>M505</td>\n",
+       "      <td>AdaptMax Field</td>\n",
+       "      <td>2100</td>\n",
+       "      <td>Humanity Mobility Systems</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>12</th>\n",
+       "      <td>PT-013</td>\n",
+       "      <td>b67553ab7f2f49b446359f3ffcb2cf0269b100b1f32945...</td>\n",
+       "      <td>25.0</td>\n",
+       "      <td>2024-06-09</td>\n",
+       "      <td>trauma</td>\n",
+       "      <td>M404</td>\n",
+       "      <td>CrestFit Pro</td>\n",
+       "      <td>1850</td>\n",
+       "      <td>OrthoSphere</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>13</th>\n",
+       "      <td>PT-014</td>\n",
+       "      <td>38af6b912dcc427ce0a2cfa89af39c03cd64d2ff63807e...</td>\n",
+       "      <td>30.0</td>\n",
+       "      <td>2024-04-18</td>\n",
+       "      <td>blast injury</td>\n",
+       "      <td>M210</td>\n",
+       "      <td>AeroStep Lite</td>\n",
+       "      <td>950</td>\n",
+       "      <td>Stride MedTech</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>14</th>\n",
+       "      <td>PT-015</td>\n",
+       "      <td>aae1fe05b6abe5f07d9be6bd785106ba7c447f0948c885...</td>\n",
+       "      <td>27.0</td>\n",
+       "      <td>2024-07-15</td>\n",
+       "      <td>trauma</td>\n",
+       "      <td>M302</td>\n",
+       "      <td>FlexFoot Alpha</td>\n",
+       "      <td>1200</td>\n",
+       "      <td>Global Limb Works</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "   Patient_ID                                          Full_Name  Age_Years  \\\n",
+       "0      PT-001  94890005f3b2117a353da7260259531878cae4f541bf59...       28.0   \n",
+       "1      PT-002  a083bb1e6e0e335305d8c73f05df267a9e73d7a0ff6bbe...       34.0   \n",
+       "2      PT-003  727a69291f7d286125c3fa541dc8f063a0264f9413a9ff...       31.0   \n",
+       "3      PT-004  02e82576b0769a2397331db8f749d6815cfec92e91b0ae...       40.0   \n",
+       "4      PT-005  8ec077386d04ed3d0182401b5465002bbcf07379999552...       38.0   \n",
+       "5      PT-006  fb8bc0d367f5b3bfadcf751a18c5e9aa209cb61bb12f95...       50.0   \n",
+       "6      PT-007  9b2d5b4678781e53038e91ea5324530a03f27dc1d0e5f6...       19.0   \n",
+       "7      PT-008  e438554de6cf47de7e7bf0c3b0a3c37b33c88d6cb640d0...       41.0   \n",
+       "8      PT-009  ad617c24c70ec4c78c958dcee192488ed5306a110ace77...       52.0   \n",
+       "9      PT-010  ad4a5afe7f5090d3e1c1762aaf41c8a5d6aaa83f92d43e...        NaN   \n",
+       "10     PT-011  51fb0f03484846ef946ad05820f5281b8ba02d835f51d9...       45.0   \n",
+       "11     PT-012  76a2b615f3384695d704ae21371727af0e96c45ab05c4e...       36.0   \n",
+       "12     PT-013  b67553ab7f2f49b446359f3ffcb2cf0269b100b1f32945...       25.0   \n",
+       "13     PT-014  38af6b912dcc427ce0a2cfa89af39c03cd64d2ff63807e...       30.0   \n",
+       "14     PT-015  aae1fe05b6abe5f07d9be6bd785106ba7c447f0948c885...       27.0   \n",
+       "\n",
+       "   Implant_Date_Clean Amputation_Cause_Clean Device_Model_ID      Model_Name  \\\n",
+       "0          2024-05-12                 trauma            M302  FlexFoot Alpha   \n",
+       "1          2024-06-15               diabetes            M404    CrestFit Pro   \n",
+       "2          2024-05-12                 trauma            M302  FlexFoot Alpha   \n",
+       "3          2023-11-07           blast injury            M505  AdaptMax Field   \n",
+       "4          2023-09-01                 trauma            M404    CrestFit Pro   \n",
+       "5          2024-03-03               diabetes            M210   AeroStep Lite   \n",
+       "6          2024-01-20                 trauma            M302  FlexFoot Alpha   \n",
+       "7          2024-02-20           blast injury            M505  AdaptMax Field   \n",
+       "8          2024-04-05                 trauma            M404    CrestFit Pro   \n",
+       "9          2024-08-30               diabetes            M210   AeroStep Lite   \n",
+       "10         2023-12-11                 trauma            M302  FlexFoot Alpha   \n",
+       "11         2023-10-14                diabets            M505  AdaptMax Field   \n",
+       "12         2024-06-09                 trauma            M404    CrestFit Pro   \n",
+       "13         2024-04-18           blast injury            M210   AeroStep Lite   \n",
+       "14         2024-07-15                 trauma            M302  FlexFoot Alpha   \n",
+       "\n",
+       "    Cost_USD               Manufacturer  \n",
+       "0       1200          Global Limb Works  \n",
+       "1       1850                OrthoSphere  \n",
+       "2       1200          Global Limb Works  \n",
+       "3       2100  Humanity Mobility Systems  \n",
+       "4       1850                OrthoSphere  \n",
+       "5        950             Stride MedTech  \n",
+       "6       1200          Global Limb Works  \n",
+       "7       2100  Humanity Mobility Systems  \n",
+       "8       1850                OrthoSphere  \n",
+       "9        950             Stride MedTech  \n",
+       "10      1200          Global Limb Works  \n",
+       "11      2100  Humanity Mobility Systems  \n",
+       "12      1850                OrthoSphere  \n",
+       "13       950             Stride MedTech  \n",
+       "14      1200          Global Limb Works  "
+      ]
+     },
+     "execution_count": 23,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "# Final enriched, privacy-safe dataset\n",
+    "output_cols = [\n",
+    "    'Patient_ID', 'Full_Name', 'Age_Years',\n",
+    "    'Implant_Date_Clean', 'Amputation_Cause_Clean',\n",
+    "    'Device_Model_ID', 'Model_Name', 'Cost_USD', 'Manufacturer',\n",
+    "]\n",
+    "patient_device_df[output_cols]"
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": ".venv (3.14.3.final.0)",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.14.3"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}
